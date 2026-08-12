@@ -10,7 +10,6 @@
 </head>
 <body>
   <div id="app">
-    <!-- ツールバー -->
     <header id="toolbar" class="toolbar">
       <div class="toolbar-left">
         <button id="btn-menu" class="tool-btn" title="メニュー / Menu (M)" aria-label="メニュー">☰</button>
@@ -18,35 +17,37 @@
           <button id="btn-prev" class="tool-btn" title="前のページ (←)" aria-label="前のページ">◀</button>
           <span id="page-indicator" class="page-indicator">1 / 1</span>
           <button id="btn-next" class="tool-btn" title="次のページ (→)" aria-label="次のページ">▶</button>
-          <button id="btn-add-page" class="tool-btn" title="ページ追加 (+)" aria-label="ページ追加">＋</button>
+          <button id="btn-add-page" class="tool-btn" title="ページ追加" aria-label="ページ追加">＋</button>
+          <button id="btn-dup-page" class="tool-btn" title="ページ複製 (D)" aria-label="ページ複製">⧉</button>
           <button id="btn-del-page" class="tool-btn danger" title="ページ削除" aria-label="ページ削除">−</button>
         </div>
       </div>
-
       <div class="toolbar-center">
         <div class="tool-group" id="tool-group">
-          <button id="btn-chalk" class="tool-btn active" data-tool="chalk" title="チョーク (C)" aria-label="チョーク">
-            <span class="icon">✎</span>
-          </button>
-          <button id="btn-eraser" class="tool-btn" data-tool="eraser" title="黒板消し (E)" aria-label="黒板消し">
-            <span class="icon">⌫</span>
-          </button>
-          <button id="btn-line" class="tool-btn" data-tool="line" title="直線 (L)" aria-label="直線">／</button>
-          <button id="btn-rect" class="tool-btn" data-tool="rect" title="四角 (R)" aria-label="四角">□</button>
-          <button id="btn-circle" class="tool-btn" data-tool="circle" title="円 (O)" aria-label="円">○</button>
+          <button id="btn-chalk" class="tool-btn active" data-tool="chalk" title="チョーク (C)" aria-label="チョーク"><span class="icon">✎</span></button>
+          <button id="btn-highlighter" class="tool-btn" data-tool="highlighter" title="蛍光ペン (H)" aria-label="蛍光ペン"><span class="icon">🖍</span></button>
+          <button id="btn-eraser" class="tool-btn" data-tool="eraser" title="黒板消し (E)" aria-label="黒板消し"><span class="icon">⌫</span></button>
+          <button id="btn-line" class="tool-btn" data-tool="line" title="直線 (L) / Shiftで45°" aria-label="直線">／</button>
+          <button id="btn-rect" class="tool-btn" data-tool="rect" title="四角 (R) / Shiftで正方形" aria-label="四角">□</button>
+          <button id="btn-circle" class="tool-btn" data-tool="circle" title="円 (O) / Shiftで正円" aria-label="円">○</button>
+          <button id="btn-text" class="tool-btn" data-tool="text" title="テキスト (T)" aria-label="テキスト">T</button>
         </div>
-
         <div class="size-control">
           <label for="size-slider" class="sr-only">サイズ</label>
-          <input type="range" id="size-slider" min="2" max="60" value="8" title="チョークサイズ" />
+          <input type="range" id="size-slider" min="2" max="80" value="8" title="サイズ" />
           <span id="size-value">8</span>
         </div>
-
-        <div class="color-palette" id="color-palette" role="listbox" aria-label="チョーク色">
-          <!-- colors injected by JS -->
-        </div>
+        <div class="color-palette" id="color-palette" role="listbox" aria-label="チョーク色"></div>
+        <input type="color" id="custom-color" value="#f5f5dc" title="カスタム色" class="custom-color" />
+        <label class="toggle-label" title="図形を塗りつぶす">
+          <input type="checkbox" id="fill-shapes" />
+          <span>塗</span>
+        </label>
+        <label class="toggle-label" title="方眼グリッド (G)">
+          <input type="checkbox" id="show-grid" />
+          <span>方眼</span>
+        </label>
       </div>
-
       <div class="toolbar-right">
         <button id="btn-undo" class="tool-btn" title="元に戻す (Ctrl+Z)" aria-label="元に戻す">↶</button>
         <button id="btn-redo" class="tool-btn" title="やり直す (Ctrl+Y)" aria-label="やり直す">↷</button>
@@ -55,12 +56,14 @@
         <span id="zoom-indicator" class="zoom-indicator">100%</span>
         <button id="btn-zoom-in" class="tool-btn" title="拡大 (+)" aria-label="拡大">＋</button>
         <button id="btn-zoom-reset" class="tool-btn" title="ズームリセット (0)" aria-label="リセット">⟲</button>
+        <button id="btn-theme" class="tool-btn" title="黒板の色を変更" aria-label="テーマ">🎨</button>
+        <button id="btn-import" class="tool-btn" title="画像を取り込む" aria-label="画像取込">📷</button>
+        <input type="file" id="file-import" accept="image/*" hidden />
         <button id="btn-download" class="tool-btn" title="画像ダウンロード (S)" aria-label="ダウンロード">⬇</button>
+        <button id="btn-help" class="tool-btn" title="ヘルプ (?)" aria-label="ヘルプ">?</button>
         <button id="btn-fullscreen" class="tool-btn" title="フルスクリーン (F)" aria-label="フルスクリーン">⛶</button>
       </div>
     </header>
-
-    <!-- サイドメニュー（ページ一覧など） -->
     <aside id="side-panel" class="side-panel" aria-hidden="true">
       <div class="side-header">
         <h2>ページ一覧</h2>
@@ -68,35 +71,80 @@
       </div>
       <div id="page-list" class="page-list"></div>
       <div class="side-footer">
-        <button id="btn-export-all" class="action-btn">全ページをZIP保存</button>
+        <button id="btn-export-all" class="action-btn">全ページを順に保存</button>
         <button id="btn-clear-storage" class="action-btn danger">全データ削除</button>
         <p class="hint">自動保存: ローカルストレージ</p>
       </div>
     </aside>
-
-    <!-- キャンバス領域 -->
     <main id="canvas-wrapper">
       <div id="canvas-container">
         <canvas id="board"></canvas>
         <canvas id="overlay"></canvas>
       </div>
-      <!-- チョークホールド表示 -->
       <div id="chalk-cursor" class="chalk-cursor" aria-hidden="true"></div>
+      <textarea id="text-input" class="text-input" rows="1" hidden></textarea>
     </main>
-
-    <!-- ステータスバー -->
     <footer id="statusbar" class="statusbar">
       <span id="status-tool">チョーク</span>
       <span id="status-color"></span>
       <span id="status-size">サイズ: 8</span>
       <span id="status-coords">—</span>
+      <span id="status-theme">緑黒板</span>
       <span id="status-save">保存済</span>
     </footer>
-
-    <!-- トースト -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="help-modal" class="modal" hidden>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>ショートカット &amp; 機能</h2>
+          <button id="btn-close-help" class="tool-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="help-grid">
+            <div>
+              <h3>ツール</h3>
+              <ul>
+                <li><kbd>C</kbd> チョーク</li>
+                <li><kbd>H</kbd> 蛍光ペン</li>
+                <li><kbd>E</kbd> 黒板消し</li>
+                <li><kbd>L</kbd> 直線</li>
+                <li><kbd>R</kbd> 四角</li>
+                <li><kbd>O</kbd> 円</li>
+                <li><kbd>T</kbd> テキスト</li>
+              </ul>
+            </div>
+            <div>
+              <h3>操作</h3>
+              <ul>
+                <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す</li>
+                <li><kbd>Ctrl</kbd>+<kbd>Y</kbd> やり直し</li>
+                <li><kbd>Ctrl</kbd>+<kbd>S</kbd> 画像保存</li>
+                <li><kbd>Shift</kbd>+ドラッグ 図形を正形に</li>
+                <li><kbd>Space</kbd>+ドラッグ パン</li>
+                <li>ホイール ズーム</li>
+                <li><kbd>G</kbd> 方眼ON/OFF</li>
+              </ul>
+            </div>
+            <div>
+              <h3>ページ・その他</h3>
+              <ul>
+                <li><kbd>←</kbd> <kbd>→</kbd> ページ移動</li>
+                <li><kbd>D</kbd> ページ複製</li>
+                <li><kbd>+</kbd> <kbd>-</kbd> ズーム</li>
+                <li><kbd>0</kbd> ズームリセット</li>
+                <li><kbd>F</kbd> フルスクリーン</li>
+                <li><kbd>M</kbd> メニュー</li>
+                <li><kbd>?</kbd> このヘルプ</li>
+                <li><kbd>1</kbd>–<kbd>8</kbd> 色選択</li>
+                <li><kbd>[</kbd> <kbd>]</kbd> サイズ変更</li>
+              </ul>
+            </div>
+          </div>
+          <p class="help-note">画像はドラッグ＆ドロップでも取り込めます。データはブラウザのローカルストレージに自動保存されます。</p>
+        </div>
+      </div>
+    </div>
   </div>
-
   <script src="bb.javascript"></script>
 </body>
 </html>
