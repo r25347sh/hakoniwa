@@ -181,7 +181,7 @@
   }
 
   function clearBoard() {
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--board-bg").trim() || "#1a2f1a";
+    ctx.fillStyle = getBoardBg();
     ctx.fillRect(0, 0, BOARD_W, BOARD_H);
     drawBoardTexture();
   }
@@ -219,12 +219,18 @@
     ctx.lineWidth = state.size;
   }
 
+  function getBoardBg() {
+    return getComputedStyle(document.documentElement).getPropertyValue("--board-bg").trim() || "#1a2f1a";
+  }
+
   function setEraserStyle() {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.globalCompositeOperation = "destination-out";
+    ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 1;
-    ctx.lineWidth = state.size * 2.2;
+    ctx.strokeStyle = getBoardBg();
+    ctx.fillStyle = getBoardBg();
+    ctx.lineWidth = state.size * 2.5;
   }
 
   function drawChalkStroke(x0, y0, x1, y1) {
@@ -242,11 +248,16 @@
 
   function drawEraserStroke(x0, y0, x1, y1) {
     setEraserStyle();
+    // 太い線で地色を塗る（図形・チョーク両方確実に消える）
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
     ctx.stroke();
-    ctx.globalCompositeOperation = "source-over";
+    // 端点も円で埋めてムラを減らす
+    const r = (state.size * 2.5) / 2;
+    ctx.beginPath();
+    ctx.arc(x1, y1, r, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function startDraw(e) {
@@ -262,11 +273,19 @@
     if (state.tool === "chalk" || state.tool === "eraser") {
       pushUndo();
       if (state.tool === "chalk") {
+        // single dot
         setChalkStyle();
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, state.size / 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
+      } else if (state.tool === "eraser") {
+        // クリックした地点も消す
+        setEraserStyle();
+        const r = (state.size * 2.5) / 2;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
   }
@@ -428,7 +447,7 @@
     chalkCursor.style.top = clientY + "px";
     chalkCursor.classList.add("visible");
 
-    const size = state.tool === "eraser" ? state.size * 2.2 : state.size;
+    const size = state.tool === "eraser" ? state.size * 2.5 : state.size;
     chalkCursor.style.width = Math.max(8, size * state.zoom) + "px";
     chalkCursor.style.height = Math.max(8, size * state.zoom) + "px";
     chalkCursor.style.background = state.tool === "eraser" ? "rgba(180,160,120,0.3)" : state.color;
