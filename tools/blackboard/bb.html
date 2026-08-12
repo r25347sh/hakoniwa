@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="フルスクリーン黒板アプリ - チョーク・黒板消し・複数ページ・ズーム・ローカル保存" />
+  <title>黒板 | Blackboard</title>
+  <link rel="stylesheet" href="bb.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a3a1a' width='100' height='100' rx='8'/><text y='70' x='50' text-anchor='middle' font-size='60' fill='%23f5f5dc'>✎</text></svg>" />
+</head>
+<body>
+  <div id="app">
+    <!-- ツールバー -->
+    <header id="toolbar" class="toolbar">
+      <div class="toolbar-left">
+        <button id="btn-menu" class="tool-btn" title="メニュー / Menu (M)" aria-label="メニュー">☰</button>
+        <div class="page-controls">
+          <button id="btn-prev" class="tool-btn" title="前のページ (←)" aria-label="前のページ">◀</button>
+          <span id="page-indicator" class="page-indicator">1 / 1</span>
+          <button id="btn-next" class="tool-btn" title="次のページ (→)" aria-label="次のページ">▶</button>
+          <button id="btn-add-page" class="tool-btn" title="ページ追加 (+)" aria-label="ページ追加">＋</button>
+          <button id="btn-del-page" class="tool-btn danger" title="ページ削除" aria-label="ページ削除">−</button>
+        </div>
+      </div>
+
+      <div class="toolbar-center">
+        <div class="tool-group" id="tool-group">
+          <button id="btn-chalk" class="tool-btn active" data-tool="chalk" title="チョーク (C)" aria-label="チョーク">
+            <span class="icon">✎</span>
+          </button>
+          <button id="btn-eraser" class="tool-btn" data-tool="eraser" title="黒板消し (E)" aria-label="黒板消し">
+            <span class="icon">⌫</span>
+          </button>
+          <button id="btn-line" class="tool-btn" data-tool="line" title="直線 (L)" aria-label="直線">／</button>
+          <button id="btn-rect" class="tool-btn" data-tool="rect" title="四角 (R)" aria-label="四角">□</button>
+          <button id="btn-circle" class="tool-btn" data-tool="circle" title="円 (O)" aria-label="円">○</button>
+        </div>
+
+        <div class="size-control">
+          <label for="size-slider" class="sr-only">サイズ</label>
+          <input type="range" id="size-slider" min="2" max="60" value="8" title="チョークサイズ" />
+          <span id="size-value">8</span>
+        </div>
+
+        <div class="color-palette" id="color-palette" role="listbox" aria-label="チョーク色">
+          <!-- colors injected by JS -->
+        </div>
+      </div>
+
+      <div class="toolbar-right">
+        <button id="btn-undo" class="tool-btn" title="元に戻す (Ctrl+Z)" aria-label="元に戻す">↶</button>
+        <button id="btn-redo" class="tool-btn" title="やり直す (Ctrl+Y)" aria-label="やり直す">↷</button>
+        <button id="btn-clear" class="tool-btn danger" title="ページをクリア" aria-label="クリア">🗑</button>
+        <button id="btn-zoom-out" class="tool-btn" title="縮小 (−)" aria-label="縮小">−</button>
+        <span id="zoom-indicator" class="zoom-indicator">100%</span>
+        <button id="btn-zoom-in" class="tool-btn" title="拡大 (+)" aria-label="拡大">＋</button>
+        <button id="btn-zoom-reset" class="tool-btn" title="ズームリセット (0)" aria-label="リセット">⟲</button>
+        <button id="btn-download" class="tool-btn" title="画像ダウンロード (S)" aria-label="ダウンロード">⬇</button>
+        <button id="btn-fullscreen" class="tool-btn" title="フルスクリーン (F)" aria-label="フルスクリーン">⛶</button>
+      </div>
+    </header>
+
+    <!-- サイドメニュー（ページ一覧など） -->
+    <aside id="side-panel" class="side-panel" aria-hidden="true">
+      <div class="side-header">
+        <h2>ページ一覧</h2>
+        <button id="btn-close-panel" class="tool-btn" aria-label="閉じる">×</button>
+      </div>
+      <div id="page-list" class="page-list"></div>
+      <div class="side-footer">
+        <button id="btn-export-all" class="action-btn">全ページをZIP保存</button>
+        <button id="btn-clear-storage" class="action-btn danger">全データ削除</button>
+        <p class="hint">自動保存: ローカルストレージ</p>
+      </div>
+    </aside>
+
+    <!-- キャンバス領域 -->
+    <main id="canvas-wrapper">
+      <div id="canvas-container">
+        <canvas id="board"></canvas>
+        <canvas id="overlay"></canvas>
+      </div>
+      <!-- チョークホールド表示 -->
+      <div id="chalk-cursor" class="chalk-cursor" aria-hidden="true"></div>
+    </main>
+
+    <!-- ステータスバー -->
+    <footer id="statusbar" class="statusbar">
+      <span id="status-tool">チョーク</span>
+      <span id="status-color"></span>
+      <span id="status-size">サイズ: 8</span>
+      <span id="status-coords">—</span>
+      <span id="status-save">保存済</span>
+    </footer>
+
+    <!-- トースト -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="bb.javascript"></script>
+</body>
+</html>
