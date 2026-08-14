@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>じゃんけん | HAKONIWA</title>
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml"/>
+<style>
+:root{--bg:#f3f6ee;--card:#fff;--text:#2a3528;--muted:#6a7a64;--accent:#4a9a5a;--border:rgba(60,90,50,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;max-width:560px;margin:0 auto}
+a.back{color:var(--muted);text-decoration:none;font-size:.9rem}
+h1{font-size:1.35rem;margin:1rem 0 .75rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.25rem;box-shadow:0 8px 28px rgba(40,60,30,.06)}
+button{font:inherit;cursor:pointer;border:none;border-radius:999px;padding:.7rem 1.2rem;background:var(--accent);color:#fff;font-weight:600}
+.big{font-size:clamp(2.5rem,12vw,4.5rem);font-weight:700;text-align:center;margin:1rem 0}
+.muted{color:var(--muted);font-size:.88rem;text-align:center}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin:.5rem 0}
+</style>
+</head>
+<body>
+<a class="back" href="../../">← HAKONIWA</a>
+<h1>じゃんけん</h1>
+<div class="card">
+  <div class="big" id="hand">✊</div>
+  <p class="muted" id="result">選んでね</p>
+  <div class="row">
+    <button data-c="0">✊ グー</button>
+    <button data-c="1">✌️ チョキ</button>
+    <button data-c="2">🖐️ パー</button>
+  </div>
+</div>
+<script>
+const hands=["✊","✌️","🖐️"], names=["グー","チョキ","パー"];
+document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{
+  const you=+b.dataset.c, cpu=Math.floor(Math.random()*3);
+  document.getElementById("hand").textContent=hands[cpu];
+  let r="あいこ";
+  if((you+1)%3===cpu)r="あなたの勝ち！";
+  else if((cpu+1)%3===you)r="負け…";
+  document.getElementById("result").textContent="あなた:"+names[you]+" / 相手:"+names[cpu]+" → "+r;
+});
+</script>
+</body>
+</html>

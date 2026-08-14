@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>フラッシュカード | HAKONIWA</title>
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml"/>
+<style>
+:root{--bg:#f3f6ee;--card:#fff;--text:#2a3528;--muted:#6a7a64;--accent:#4a9a5a;--border:rgba(60,90,50,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;max-width:560px;margin:0 auto}
+a.back{color:var(--muted);text-decoration:none;font-size:.9rem}
+h1{font-size:1.35rem;margin:1rem 0 .75rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.25rem;box-shadow:0 8px 28px rgba(40,60,30,.06);margin-bottom:1rem}
+button{font:inherit;cursor:pointer;border:none;border-radius:999px;padding:.7rem 1.2rem;background:var(--accent);color:#fff;font-weight:600}
+button.ghost{background:#fff;color:var(--text);border:1px solid var(--border)}
+textarea{width:100%;padding:.65rem .85rem;border:1px solid var(--border);border-radius:10px;font:inherit;margin:.35rem 0}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0;justify-content:center}
+.muted{color:var(--muted);font-size:.88rem}
+.big{font-size:2rem;font-weight:700;text-align:center;margin:1rem 0}
+</style>
+</head>
+<body>
+<a class="back" href="../../">← HAKONIWA</a>
+<h1>フラッシュカード</h1>
+<div class="card">
+  <label class="muted">カード（表|裏 を1行ずつ）</label>
+  <textarea id="src" rows="6">りんご|apple\n犬|dog\n水|water</textarea>
+  <div class="row"><button id="go">開始</button></div>
+</div>
+<div class="card" id="card" style="display:none;text-align:center;min-height:160px;cursor:pointer">
+  <p class="muted" id="side">おもて</p>
+  <div class="big" id="text"></div>
+  <div class="row" style="margin-top:1rem">
+    <button class="ghost" id="prev">←</button>
+    <button id="flip">裏返す</button>
+    <button class="ghost" id="next">→</button>
+  </div>
+</div>
+<script>
+let cards=[],i=0,front=true;
+function show(){front=true;document.getElementById("side").textContent="おもて";document.getElementById("text").textContent=cards[i][0]}
+document.getElementById("go").onclick=()=>{
+  cards=document.getElementById("src").value.split(/\n/).map(l=>l.split("|").map(s=>s.trim())).filter(a=>a[0]&&a[1]);
+  if(!cards.length)return;i=0;document.getElementById("card").style.display="block";show();
+};
+document.getElementById("flip").onclick=()=>{front=!front;document.getElementById("side").textContent=front?"おもて":"うら";document.getElementById("text").textContent=cards[i][front?0:1]};
+document.getElementById("card").onclick=e=>{if(e.target.tagName==="BUTTON")return;document.getElementById("flip").click()};
+document.getElementById("prev").onclick=e=>{e.stopPropagation();i=(i-1+cards.length)%cards.length;show()};
+document.getElementById("next").onclick=e=>{e.stopPropagation();i=(i+1)%cards.length;show()};
+</script>
+</body>
+</html>

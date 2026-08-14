@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>コイントス | HAKONIWA</title>
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml"/>
+<style>
+:root{--bg:#f3f6ee;--card:#fff;--text:#2a3528;--muted:#6a7a64;--accent:#4a9a5a;--border:rgba(60,90,50,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;max-width:560px;margin:0 auto}
+a.back{color:var(--muted);text-decoration:none;font-size:.9rem}
+h1{font-size:1.35rem;margin:1rem 0 .75rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.25rem;box-shadow:0 8px 28px rgba(40,60,30,.06);margin-bottom:1rem}
+button{font:inherit;cursor:pointer;border:none;border-radius:999px;padding:.7rem 1.2rem;background:var(--accent);color:#fff;font-weight:600}
+.big{font-size:clamp(2.5rem,12vw,4.5rem);font-weight:700;text-align:center;margin:1rem 0}
+.muted{color:var(--muted);font-size:.88rem}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.5rem 0;justify-content:center}
+</style>
+</head>
+<body>
+<a class="back" href="../../">← HAKONIWA</a>
+<h1>コイントス</h1>
+<div class="card">
+  <div class="big" id="face">？</div>
+  <p class="muted" style="text-align:center">表 / 裏</p>
+  <div class="row"><button id="flip">投げる</button></div>
+</div>
+<script>
+const el=document.getElementById("face");
+document.getElementById("flip").onclick=()=>{
+  el.style.opacity=.3;
+  let n=0;const iv=setInterval(()=>{el.textContent=Math.random()>.5?"表":"裏";if(++n>12){clearInterval(iv);el.style.opacity=1;el.textContent=Math.random()>.5?"表":"裏"}},50);
+};
+</script>
+</body>
+</html>
