@@ -134,8 +134,12 @@
       border: 1px solid rgba(255,255,255,0.08); text-align: center;
     }
     .share-panel p { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.85rem; }
-    #qr { width: 160px; height: 160px; margin: 0 auto 1rem; background: #fff; border-radius: 12px; padding: 8px; }
-    #qr canvas { width: 100% !important; height: 100% !important; display: block; }
+    #qr {
+      width: 168px; height: 168px; margin: 0 auto 1rem;
+      background: #fff; border-radius: 12px; padding: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #qr img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 4px; }
     .share-actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
     .share-actions button { font-size: 0.85rem; padding: 0.6rem 1.1rem; }
     .toast {
@@ -178,7 +182,7 @@
     <p class="section-label" id="tx-label" style="display:none">送受信</p>
     <div id="transfers"></div>
     <div class="share-panel">
-      <p>相手にこの画面を見せるか、<br />リンクを送って接続してもらいます</p>
+      <p>相手にこのQRを読み取ってもらうか、<br />リンクを送って接続してもらいます</p>
       <div id="qr"></div>
       <div class="share-actions">
         <button class="btn-main" id="btn-copy">リンクをコピー</button>
@@ -187,7 +191,6 @@
     </div>
   </div>
   <div class="toast" id="toast"></div>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
 (() => {
   "use strict";
@@ -198,6 +201,7 @@
   const statusEl = $("#status"), statusText = $("#status-text");
   let peer = null, room = null, myId = null, isHost = false, myName = "";
   const peers = new Map();
+
   function toast(msg) {
     const t = $("#toast"); t.textContent = msg; t.classList.add("show");
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2200);
@@ -211,7 +215,7 @@
     statusText.textContent = text;
   }
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&", "<": "<", ">": ">", '"': """, "'": "&#39;" }[c]));
   }
   function renderDevices() {
     devicesEl.innerHTML = "";
@@ -256,7 +260,7 @@
   }
   function startHost(r) {
     isHost = true; myId = hostId(r); peer = new Peer(myId, { debug: 0 });
-    peer.on("open", () => { setStatus("ok", "受信待機中"); toast("準備完了 — リンクを共有してください"); });
+    peer.on("open", () => { setStatus("ok", "受信待機中"); toast("準備完了 — QRまたはリンクを共有してください"); });
     peer.on("connection", wire);
     peer.on("error", (err) => {
       if (err && (err.type === "unavailable-id" || String(err).includes("taken"))) { destroy(); startGuest(r); }
@@ -278,20 +282,36 @@
     peers.forEach((p) => { try { p.conn.close(); } catch {} }); peers.clear();
     if (peer) { try { peer.destroy(); } catch {} peer = null; }
   }
+
+  /** QR: 外部API画像（CDNライブラリ不要・確実） */
+  function drawQR(text) {
+    const box = $("#qr");
+    box.innerHTML = "";
+    const img = document.createElement("img");
+    img.alt = "接続用QRコード";
+    img.width = 152;
+    img.height = 152;
+    // 複数プロバイダをフォールバック
+    const sources = [
+      "https://api.qrserver.com/v1/create-qr-code/?size=152x152&margin=8&data=" + encodeURIComponent(text),
+      "https://quickchart.io/qr?size=152&text=" + encodeURIComponent(text),
+    ];
+    let i = 0;
+    img.onerror = () => {
+      i++;
+      if (i < sources.length) img.src = sources[i];
+      else box.innerHTML = '<p style="font-size:0.75rem;color:#666;padding:0.5rem;text-align:center">QRを表示できません。<br>下の「リンクをコピー」を使ってください</p>';
+    };
+    img.src = sources[0];
+    box.appendChild(img);
+  }
+
   function enter(r) {
     room = r.toUpperCase(); myName = ($("#name").value || "").trim() || "端末" + code(2);
     lobby.style.display = "none"; share.style.display = "block";
     $("#room-tag").textContent = "ROOM " + room;
     const url = new URL(location.href); url.searchParams.set("room", room); history.replaceState(null, "", url);
     drawQR(url.toString()); renderDevices(); startHost(room);
-  }
-  function drawQR(text) {
-    const box = $("#qr"); box.innerHTML = "";
-    if (window.QRCode) {
-      QRCode.toCanvas(text, { width: 144, margin: 1, color: { dark: "#0a100e", light: "#ffffff" } }, (err, canvas) => {
-        if (!err) box.appendChild(canvas); else box.textContent = "QR生成失敗";
-      });
-    } else box.innerHTML = '<p style="font-size:0.75rem;color:#666;padding:1rem">リンクコピーを使ってください</p>';
   }
   function sizeLabel(n) {
     if (n < 1024) return n + " B"; if (n < 1048576) return (n / 1024).toFixed(1) + " KB"; return (n / 1048576).toFixed(1) + " MB";
@@ -337,6 +357,7 @@
     const tx = addTransfer({ name: msg.name || "file", size: msg.size || 0, direction: from + " から受信", progress: 100 });
     tx.done(msg.data); toast("受信: " + (msg.name || "ファイル"));
   }
+
   $("#btn-host").onclick = () => enter(code(6));
   const q = new URLSearchParams(location.search).get("room");
   if (q && q.length >= 4) {
