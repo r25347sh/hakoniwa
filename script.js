@@ -5,7 +5,7 @@
   "use strict";
 
   const TOOLS = [
-    { id: "quickshare", title: "Quick Share", desc: "同じリンクを開いた人同士で、テキスト・画像・ファイルをリアルタイム共有。", icon: "📡", href: "tools/quickshare/", tag: "NEW", accent: "#5dade2" },
+    { id: "quickshare", title: "Quick Share", desc: "ファイルを端末同士で送受信。QRとリンクでつながる。", icon: "📡", href: "tools/quickshare/", tag: "NEW", accent: "#5dade2" },
     { id: "blackboard", title: "黒板", desc: "フルスクリーン黒板。チョーク・消し・複数ページ・ズーム対応。", icon: "✎", href: "tools/blackboard/bb.html", tag: "人気", accent: "#7cb87c" },
     { id: "timer", title: "授業タイマー", desc: "残り時間を大きく表示。プリセットやアラーム付き。", icon: "⏱", href: "tools/timer/", tag: "時間", accent: "#5dade2" },
     { id: "picker", title: "指名・抽選", desc: "名簿や番号からランダムに1人（または複数）を選出。", icon: "🎲", href: "tools/picker/", tag: "参加", accent: "#f5b041" },
@@ -23,15 +23,50 @@
   function renderTools() {
     const grid = document.getElementById("tools-grid");
     if (!grid) return;
-    grid.innerHTML = TOOLS.map((t, i) => `
-      <a class="tool-card" href="${t.href}" style="--card-accent:${t.accent};animation-delay:${i * 0.05}s">
-        ${t.tag ? `<span class="tool-tag">${t.tag}</span>` : ""}
+    grid.innerHTML = TOOLS.map((t) => `
+      <a class="tool-card" href="${t.href}" style="--card-accent:${t.accent}" data-tag="${t.tag || ""}">
+        ${t.tag ? `<span class="tool-tag" data-tag="${t.tag}">${t.tag}</span>` : ""}
         <div class="tool-icon" style="background:color-mix(in srgb, ${t.accent} 18%, transparent)">${t.icon}</div>
         <h3>${t.title}</h3>
         <p>${t.desc}</p>
         <span class="tool-link">開く</span>
       </a>
     `).join("");
+
+    const cards = grid.querySelectorAll(".tool-card");
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("visible");
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+      cards.forEach((c, i) => {
+        c.style.transitionDelay = i * 0.05 + "s";
+        io.observe(c);
+      });
+    } else {
+      cards.forEach((c) => c.classList.add("visible"));
+    }
+  }
+
+  function spawnPetals() {
+    const box = document.getElementById("petals");
+    if (!box || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    for (let i = 0; i < 14; i++) {
+      const p = document.createElement("span");
+      p.className = "petal";
+      p.style.left = Math.random() * 100 + "%";
+      p.style.animationDuration = 12 + Math.random() * 16 + "s";
+      p.style.animationDelay = Math.random() * 12 + "s";
+      p.style.width = 5 + Math.random() * 7 + "px";
+      p.style.height = p.style.width;
+      p.style.opacity = String(0.08 + Math.random() * 0.12);
+      p.style.background = Math.random() > 0.5 ? "#7cb87c" : "#c4a574";
+      box.appendChild(p);
+    }
   }
 
   function bindMenu() {
@@ -59,5 +94,6 @@
     renderTools();
     bindMenu();
     setYear();
+    spawnPetals();
   });
 })();

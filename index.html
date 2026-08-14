@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="HAKONIWA — 授業のためのデジタル箱庭。黒板・タイマー・抽選・サイコロなど、すぐに使えるツール集。" />
-  <meta name="theme-color" content="#1a2f1a" />
+  <meta name="description" content="HAKONIWA — 授業のためのデジタル箱庭。黒板・タイマー・抽選・ファイル共有など、すぐに使えるツール集。" />
+  <meta name="theme-color" content="#080e0b" />
   <title>HAKONIWA | 授業の箱庭</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="icon" href="favicon.ico" sizes="any" />
   <link rel="apple-touch-icon" href="favicon.svg" />
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -20,6 +19,7 @@
     <span class="orb orb-2"></span>
     <span class="orb orb-3"></span>
   </div>
+  <div class="petals" id="petals" aria-hidden="true"></div>
 
   <header class="site-header">
     <div class="header-inner">
@@ -47,12 +47,12 @@
           <span class="line accent">小さな箱庭を。</span>
         </h1>
         <p class="hero-lead">
-          黒板・タイマー・抽選・サイコロ——<br class="sp-only" />
+          黒板・タイマー・抽選・ファイル共有——<br class="sp-only" />
           すぐに使えるツールを、ひとつの庭に集めました。
         </p>
         <div class="hero-actions">
           <a href="#tools" class="btn btn-primary">
-            <span>ツールを見る</span>
+            <span>庭を歩く</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </a>
           <a href="tools/blackboard/bb.html" class="btn btn-ghost">黒板を使う</a>
@@ -60,19 +60,24 @@
       </div>
       <div class="hero-visual" aria-hidden="true">
         <div class="garden-card">
+          <div class="garden-water"></div>
           <div class="garden-soil"></div>
+          <div class="garden-moss"></div>
           <div class="garden-plant p1"></div>
           <div class="garden-plant p2"></div>
           <div class="garden-plant p3"></div>
           <div class="garden-stone s1"></div>
           <div class="garden-stone s2"></div>
+          <div class="garden-firefly ff1"></div>
+          <div class="garden-firefly ff2"></div>
+          <div class="garden-firefly ff3"></div>
         </div>
       </div>
     </section>
 
     <section class="tools-section" id="tools">
       <div class="section-head">
-        <h2>Tools</h2>
+        <h2>庭の道具</h2>
         <p>授業でそのまま使える、軽量ツールたち</p>
       </div>
       <div class="tools-grid" id="tools-grid"></div>
