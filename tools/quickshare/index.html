@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="同じリンクを開いた人同士で、テキスト・画像・ファイルをリアルタイム共有" />
+  <title>Quick Share | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@600&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg: #0c1210;
+      --surface: rgba(255,255,255,0.05);
+      --border: rgba(255,255,255,0.1);
+      --text: #e8ebe6;
+      --muted: #8a9488;
+      --accent: #7cb87c;
+      --accent2: #5dade2;
+      --warn: #f5b041;
+      --danger: #e74c3c;
+      --radius: 14px;
+      --font: "Zen Kaku Gothic New", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(ellipse 50% 40% at 20% 10%, rgba(124,184,124,0.12), transparent),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(93,173,226,0.1), transparent);
+    }
+    a.back {
+      position: relative; z-index: 2;
+      display: inline-block; margin: 1rem 1.25rem 0;
+      color: var(--muted); text-decoration: none; font-size: 0.9rem;
+    }
+    a.back:hover { color: var(--text); }
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 720px; margin: 0 auto; padding: 0.5rem 1.25rem 3rem;
+    }
+    header.page { text-align: center; margin: 1rem 0 1.5rem; }
+    header.page h1 {
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.6rem; letter-spacing: 0.06em; margin-bottom: 0.35rem;
+    }
+    header.page p { color: var(--muted); font-size: 0.9rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.15rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .status-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
+      justify-content: space-between;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.35rem 0.75rem; border-radius: 999px;
+      font-size: 0.8rem; font-weight: 500;
+      background: rgba(255,255,255,0.06);
+    }
+    .badge .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted);
+    }
+    .badge.online .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .badge.connecting .dot { background: var(--warn); animation: blink 1s infinite; }
+    .badge.error .dot { background: var(--danger); }
+    @keyframes blink { 50% { opacity: 0.3; } }
+    .room-code {
+      font-variant-numeric: tabular-nums;
+      font-size: 1.35rem; font-weight: 700; letter-spacing: 0.15em;
+      color: var(--accent);
+    }
+    .room-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+    button, .btn {
+      font-family: inherit; cursor: pointer;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 0.55rem 1rem;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      transition: background 0.15s, transform 0.15s;
+    }
+    button:hover, .btn:hover { background: rgba(255,255,255,0.12); }
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), #5a9a5a);
+      color: #0c1210; border: none; font-weight: 600;
+    }
+    button.primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .peers {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem;
+      min-height: 1.5rem;
+    }
+    .peer-chip {
+      font-size: 0.75rem; padding: 0.25rem 0.6rem;
+      border-radius: 999px; background: rgba(93,173,226,0.15);
+      color: var(--accent2); border: 1px solid rgba(93,173,226,0.25);
+    }
+    .peer-chip.you {
+      background: rgba(124,184,124,0.15);
+      color: var(--accent); border-color: rgba(124,184,124,0.3);
+    }
+    .feed {
+      height: min(42vh, 380px);
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 0.65rem;
+      padding: 0.25rem;
+    }
+    .msg {
+      max-width: 88%;
+      padding: 0.65rem 0.9rem;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      word-break: break-word;
+      animation: pop 0.25s ease;
+    }
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .msg.mine {
+      align-self: flex-end;
+      background: rgba(124,184,124,0.2);
+      border: 1px solid rgba(124,184,124,0.25);
+    }
+    .msg.theirs {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+    }
+    .msg.system {
+      align-self: center;
+      background: transparent; border: none;
+      color: var(--muted); font-size: 0.8rem;
+      max-width: 100%; text-align: center;
+    }
+    .msg .meta {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.2rem;
+    }
+    .msg img {
+      max-width: 100%; border-radius: 8px; margin-top: 0.35rem;
+      display: block;
+    }
+    .msg a.file {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      color: var(--accent2); margin-top: 0.25rem;
+    }
+    .composer {
+      display: flex; gap: 0.5rem; margin-top: 0.85rem; flex-wrap: wrap;
+    }
+    .composer input[type="text"] {
+      flex: 1; min-width: 160px;
+      background: #141c18; border: 1px solid var(--border);
+      border-radius: 999px; padding: 0.65rem 1rem;
+      color: var(--text); font-family: inherit; font-size: 0.95rem;
+      outline: none;
+    }
+    .composer input[type="text"]:focus {
+      border-color: rgba(124,184,124,0.45);
+    }
+    .composer input[type="file"] { display: none; }
+    .hint {
+      color: var(--muted); font-size: 0.8rem; margin-top: 1rem;
+      text-align: center; line-height: 1.6;
+    }
+    .hint kbd {
+      display: inline-block; padding: 0.1rem 0.4rem;
+      background: rgba(255,255,255,0.08); border-radius: 4px;
+      font-size: 0.75rem; border: 1px solid var(--border);
+    }
+    .lobby { text-align: center; padding: 1.5rem 0.5rem; }
+    .lobby h2 {
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.25rem; margin-bottom: 0.75rem;
+    }
+    .lobby p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .lobby .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+    .name-input {
+      width: 100%; max-width: 240px; margin: 0 auto 1rem;
+      display: block;
+      background: #141c18; border: 1px solid var(--border);
+      border-radius: 999px; padding: 0.65rem 1rem;
+      color: var(--text); font-family: inherit; font-size: 0.95rem;
+      text-align: center; outline: none;
+    }
+    #app-panel { display: none; }
+  </style>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <a class="back" href="../../">← HAKONIWA</a>
+
+  <div class="wrap">
+    <header class="page">
+      <h1>Quick Share</h1>
+      <p>同じリンクを開いた人同士で、リアルタイム共有</p>
+    </header>
+
+    <div class="card lobby" id="lobby">
+      <h2>部屋に入る</h2>
+      <p>リンクを共有した相手と同じ部屋でつながります。<br />サーバーにデータを保存しません（端末間の直接通信）。</p>
+      <input class="name-input" id="display-name" maxlength="20" placeholder="表示名（任意）" />
+      <div class="actions">
+        <button class="primary" id="btn-create">新しい部屋を作る</button>
+        <button id="btn-join-url" style="display:none">このリンクの部屋に入る</button>
+      </div>
+    </div>
+
+    <div id="app-panel">
+      <div class="card">
+        <div class="status-row">
+          <span class="badge connecting" id="status-badge">
+            <span class="dot"></span>
+            <span id="status-text">接続中…</span>
+          </span>
+          <span class="room-code" id="room-display">------</span>
+        </div>
+        <div class="room-actions">
+          <button id="btn-copy-link">リンクをコピー</button>
+          <button id="btn-leave">退出</button>
+        </div>
+        <div class="peers" id="peers"></div>
+      </div>
+
+      <div class="card">
+        <div class="feed" id="feed"></div>
+        <div class="composer">
+          <input type="text" id="msg-input" placeholder="メッセージを入力…" autocomplete="off" />
+          <button id="btn-send" class="primary">送信</button>
+          <button id="btn-file" title="ファイル">📎</button>
+          <button id="btn-paste" title="クリップボード画像">📋</button>
+          <input type="file" id="file-input" multiple />
+        </div>
+      </div>
+
+      <p class="hint">
+        同じ URL を開いた人が自動でつながります。<br />
+        対応: テキスト・画像・ファイル（数MBまで推奨）・貼り付け（<kbd>Ctrl+V</kbd>）
+      </p>
+    </div>
+  </div>
+
+  <script>
+(() => {
+  "use strict";
+
+  const PREFIX = "hkqs-";
+  const MAX_FILE = 4 * 1024 * 1024;
+
+  const $ = (s) => document.querySelector(s);
+  const lobby = $("#lobby");
+  const app = $("#app-panel");
+  const feed = $("#feed");
+  const peersEl = $("#peers");
+  const statusBadge = $("#status-badge");
+  const statusText = $("#status-text");
+  const roomDisplay = $("#room-display");
+  const msgInput = $("#msg-input");
+  const nameInput = $("#display-name");
+
+  let peer = null;
+  let roomId = null;
+  let myId = null;
+  let isHost = false;
+  let displayName = "";
+  const connections = new Map();
+
+  function randomCode(len = 6) {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let s = "";
+    const arr = new Uint8Array(len);
+    crypto.getRandomValues(arr);
+    for (let i = 0; i < len; i++) s += chars[arr[i] % chars.length];
+    return s;
+  }
+
+  function setStatus(kind, text) {
+    statusBadge.className = "badge " + kind;
+    statusText.textContent = text;
+  }
+
+  function addSystem(text) {
+    const el = document.createElement("div");
+    el.className = "msg system";
+    el.textContent = text;
+    feed.appendChild(el);
+    feed.scrollTop = feed.scrollHeight;
+  }
+
+  function addMessage({ from, name, type, body, mine }) {
+    const el = document.createElement("div");
+    el.className = "msg " + (mine ? "mine" : "theirs");
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = (mine ? "あなた" : (name || "相手")) + " · " + new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+    el.appendChild(meta);
+
+    if (type === "text") {
+      const p = document.createElement("div");
+      p.textContent = body;
+      el.appendChild(p);
+    } else if (type === "image") {
+      const img = document.createElement("img");
+      img.src = body;
+      img.alt = "共有画像";
+      el.appendChild(img);
+    } else if (type === "file") {
+      const a = document.createElement("a");
+      a.className = "file";
+      a.href = body.data;
+      a.download = body.name || "file";
+      a.textContent = "⬇ " + (body.name || "ファイル") + (body.size ? ` (${Math.round(body.size / 1024)} KB)` : "");
+      el.appendChild(a);
+    }
+    feed.appendChild(el);
+    feed.scrollTop = feed.scrollHeight;
+  }
+
+  function renderPeers() {
+    peersEl.innerHTML = "";
+    const you = document.createElement("span");
+    you.className = "peer-chip you";
+    you.textContent = (displayName || "あなた") + (isHost ? " · ホスト" : "");
+    peersEl.appendChild(you);
+    connections.forEach((v) => {
+      const c = document.createElement("span");
+      c.className = "peer-chip";
+      c.textContent = v.name || "参加者";
+      peersEl.appendChild(c);
+    });
+  }
+
+  function broadcast(payload, exceptId) {
+    const data = JSON.stringify(payload);
+    connections.forEach((v, id) => {
+      if (id === exceptId) return;
+      if (v.conn && v.conn.open) {
+        try { v.conn.send(data); } catch (_) {}
+      }
+    });
+  }
+
+  function handlePayload(payload, fromId) {
+    if (!payload || !payload.type) return;
+
+    if (payload.type === "hello") {
+      const entry = connections.get(fromId);
+      if (entry) entry.name = payload.name || "参加者";
+      renderPeers();
+      addSystem((payload.name || "誰か") + " が入室しました");
+      const c = connections.get(fromId);
+      if (c && c.conn.open) {
+        c.conn.send(JSON.stringify({ type: "hello-ack", name: displayName, peerId: myId }));
+      }
+      if (isHost) {
+        connections.forEach((v, id) => {
+          if (id === fromId) return;
+          try {
+            c.conn.send(JSON.stringify({ type: "peer-hint", peerId: id, name: v.name }));
+          } catch (_) {}
+        });
+      }
+      return;
+    }
+
+    if (payload.type === "hello-ack") {
+      const entry = connections.get(fromId);
+      if (entry) entry.name = payload.name || "参加者";
+      renderPeers();
+      return;
+    }
+
+    if (payload.type === "peer-hint" && payload.peerId) {
+      connectToPeer(payload.peerId);
+      return;
+    }
+
+    if (payload.type === "text" || payload.type === "image" || payload.type === "file") {
+      const entry = connections.get(fromId);
+      addMessage({
+        from: fromId,
+        name: entry ? entry.name : payload.name,
+        type: payload.type,
+        body: payload.body,
+        mine: false,
+      });
+      if (isHost) broadcast(payload, fromId);
+    }
+  }
+
+  function wireConnection(conn) {
+    conn.on("open", () => {
+      connections.set(conn.peer, { conn, name: "参加者" });
+      renderPeers();
+      setStatus("online", connections.size + " 人と接続中");
+      conn.send(JSON.stringify({ type: "hello", name: displayName, peerId: myId }));
+    });
+    conn.on("data", (raw) => {
+      try {
+        const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
+        handlePayload(payload, conn.peer);
+      } catch (_) {}
+    });
+    conn.on("close", () => {
+      const entry = connections.get(conn.peer);
+      connections.delete(conn.peer);
+      renderPeers();
+      addSystem((entry && entry.name ? entry.name : "誰か") + " が退出しました");
+      setStatus(connections.size ? "online" : "connecting", connections.size ? connections.size + " 人と接続中" : "待機中…");
+    });
+    conn.on("error", () => {});
+  }
+
+  function connectToPeer(remoteId) {
+    if (!peer || remoteId === myId || connections.has(remoteId)) return;
+    try {
+      const conn = peer.connect(remoteId, { reliable: true });
+      wireConnection(conn);
+    } catch (_) {}
+  }
+
+  function hostPeerId(room) {
+    return PREFIX + room + "-host";
+  }
+
+  function startAsHost(room) {
+    isHost = true;
+    myId = hostPeerId(room);
+    peer = new Peer(myId, { debug: 0 });
+    peer.on("open", (id) => {
+      setStatus("online", "待機中（ホスト）");
+      addSystem("部屋 " + room + " を作成しました。リンクを共有してください。");
+    });
+    peer.on("connection", (conn) => wireConnection(conn));
+    peer.on("error", (err) => {
+      if (String(err).includes("is taken") || (err && err.type === "unavailable-id")) {
+        destroyPeer();
+        startAsGuest(room);
+      } else {
+        setStatus("error", "接続エラー");
+        addSystem("エラー: " + (err.type || err.message || err));
+      }
+    });
+  }
+
+  function startAsGuest(room) {
+    isHost = false;
+    myId = PREFIX + room + "-" + randomCode(4).toLowerCase();
+    peer = new Peer(myId, { debug: 0 });
+    peer.on("open", () => {
+      setStatus("connecting", "ホストに接続中…");
+      connectToPeer(hostPeerId(room));
+      let tries = 0;
+      const iv = setInterval(() => {
+        if (connections.size > 0 || tries++ > 8) {
+          clearInterval(iv);
+          if (!connections.size) setStatus("connecting", "ホスト待機中…（再接続します）");
+          return;
+        }
+        if (!connections.size) connectToPeer(hostPeerId(room));
+      }, 1500);
+    });
+    peer.on("connection", (conn) => wireConnection(conn));
+    peer.on("error", (err) => {
+      setStatus("error", "接続エラー");
+      addSystem("エラー: " + (err.type || err.message || err));
+    });
+  }
+
+  function destroyPeer() {
+    connections.forEach((v) => { try { v.conn.close(); } catch (_) {} });
+    connections.clear();
+    if (peer) {
+      try { peer.destroy(); } catch (_) {}
+      peer = null;
+    }
+  }
+
+  function enterRoom(room) {
+    roomId = room.toUpperCase();
+    displayName = (nameInput.value || "").trim() || "ゲスト" + randomCode(3);
+    roomDisplay.textContent = roomId;
+    lobby.style.display = "none";
+    app.style.display = "block";
+    feed.innerHTML = "";
+    renderPeers();
+
+    const url = new URL(location.href);
+    url.searchParams.set("room", roomId);
+    history.replaceState(null, "", url.toString());
+
+    setStatus("connecting", "接続中…");
+    startAsHost(roomId);
+  }
+
+  function leaveRoom() {
+    destroyPeer();
+    app.style.display = "none";
+    lobby.style.display = "block";
+    const url = new URL(location.href);
+    url.searchParams.delete("room");
+    history.replaceState(null, "", url.pathname + url.search);
+  }
+
+  function sendText() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+    msgInput.value = "";
+    const payload = { type: "text", body: text, name: displayName };
+    addMessage({ type: "text", body: text, mine: true, name: displayName });
+    broadcast(payload);
+  }
+
+  function sendFile(file) {
+    if (!file) return;
+    if (file.size > MAX_FILE) {
+      addSystem("ファイルが大きすぎます（目安 4MB 以下）");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (file.type.startsWith("image/")) {
+        const payload = { type: "image", body: dataUrl, name: displayName };
+        addMessage({ type: "image", body: dataUrl, mine: true, name: displayName });
+        broadcast(payload);
+      } else {
+        const payload = {
+          type: "file",
+          body: { data: dataUrl, name: file.name, size: file.size },
+          name: displayName,
+        };
+        addMessage({ type: "file", body: payload.body, mine: true, name: displayName });
+        broadcast(payload);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  $("#btn-create").onclick = () => enterRoom(randomCode(6));
+
+  const params = new URLSearchParams(location.search);
+  const existingRoom = (params.get("room") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (existingRoom.length >= 4) {
+    $("#btn-join-url").style.display = "inline-flex";
+    $("#btn-join-url").textContent = "部屋 " + existingRoom + " に入る";
+    $("#btn-join-url").onclick = () => enterRoom(existingRoom);
+  }
+
+  $("#btn-copy-link").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      addSystem("リンクをコピーしました");
+    } catch (_) {
+      prompt("このリンクをコピーしてください", location.href);
+    }
+  };
+
+  $("#btn-leave").onclick = leaveRoom;
+  $("#btn-send").onclick = sendText;
+  msgInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendText();
+    }
+  });
+
+  $("#btn-file").onclick = () => $("#file-input").click();
+  $("#file-input").onchange = (e) => {
+    Array.from(e.target.files || []).forEach(sendFile);
+    e.target.value = "";
+  };
+
+  $("#btn-paste").onclick = async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imgType = item.types.find((t) => t.startsWith("image/"));
+        if (imgType) {
+          const blob = await item.getType(imgType);
+          sendFile(new File([blob], "paste.png", { type: imgType }));
+          return;
+        }
+      }
+      addSystem("クリップボードに画像がありません");
+    } catch (_) {
+      addSystem("クリップボードを読めませんでした。Ctrl+V で貼り付けてみてください");
+    }
+  };
+
+  document.addEventListener("paste", (e) => {
+    if (app.style.display === "none") return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) sendFile(file);
+        return;
+      }
+    }
+  });
+
+  document.addEventListener("dragover", (e) => e.preventDefault());
+  document.addEventListener("drop", (e) => {
+    if (app.style.display === "none") return;
+    e.preventDefault();
+    Array.from(e.dataTransfer.files || []).forEach(sendFile);
+  });
+})();
+  </script>
+</body>
+</html>
