@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>スコアボード | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { --bg:#0c1210; --text:#e8ebe6; --muted:#8a9488; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:1rem; }
+    a.back { color:var(--muted); text-decoration:none; font-size:0.9rem; }
+    h1 { text-align:center; font-size:1.2rem; margin:0.75rem 0 1.5rem; color:var(--muted); }
+    .boards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; max-width:900px; margin:0 auto; }
+    .team {
+      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);
+      border-radius:16px; padding:1.25rem; text-align:center;
+    }
+    .team input.name {
+      background:transparent; border:none; border-bottom:1px dashed rgba(255,255,255,0.2);
+      color:var(--text); font-size:1.1rem; font-weight:600; text-align:center; width:100%; margin-bottom:0.5rem;
+    }
+    .score { font-size:clamp(3rem,12vw,5rem); font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1; margin:0.5rem 0; }
+    .btns { display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; }
+    .btns button {
+      width:48px; height:48px; border-radius:12px; border:none; font-size:1.4rem; cursor:pointer;
+      background:rgba(255,255,255,0.1); color:var(--text);
+    }
+    .btns button.plus { background:#7cb87c; color:#0c1210; }
+    .btns button.minus { background:rgba(231,76,60,0.35); }
+    .toolbar { text-align:center; margin-top:1.5rem; }
+    .toolbar button {
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+      color:var(--text); padding:0.5rem 1rem; border-radius:999px; cursor:pointer; margin:0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../">← HAKONIWA</a>
+  <h1>スコアボード</h1>
+  <div class="boards" id="boards"></div>
+  <div class="toolbar">
+    <button id="add">チーム追加</button>
+    <button id="reset">全リセット</button>
+  </div>
+  <script>
+    const colors = ["#5dade2","#e74c3c","#58d68d","#f5b041","#bb8fce","#f1948a"];
+    let teams = JSON.parse(localStorage.getItem("hakoniwa-scores") || "null") || [
+      { name: "チーム A", score: 0 },
+      { name: "チーム B", score: 0 },
+    ];
+    function save() { localStorage.setItem("hakoniwa-scores", JSON.stringify(teams)); }
+    function render() {
+      const el = document.getElementById("boards");
+      el.innerHTML = teams.map((t, i) => `
+        <div class="team" style="border-color:${colors[i % colors.length]}44">
+          <input class="name" value="${t.name.replace(/"/g,""")}" data-i="${i}" />
+          <div class="score" style="color:${colors[i % colors.length]}">${t.score}</div>
+          <div class="btns">
+            <button class="minus" data-i="${i}" data-d="-1">−</button>
+            <button class="plus" data-i="${i}" data-d="1">＋</button>
+            <button data-i="${i}" data-d="5">+5</button>
+            <button data-i="${i}" data-d="-5">−5</button>
+          </div>
+        </div>
+      `).join("");
+      el.querySelectorAll("input.name").forEach(inp => {
+        inp.onchange = () => { teams[+inp.dataset.i].name = inp.value; save(); };
+      });
+      el.querySelectorAll(".btns button").forEach(btn => {
+        btn.onclick = () => {
+          teams[+btn.dataset.i].score += +btn.dataset.d;
+          save(); render();
+        };
+      });
+    }
+    document.getElementById("add").onclick = () => {
+      if (teams.length >= 8) return;
+      teams.push({ name: "チーム " + (teams.length + 1), score: 0 });
+      save(); render();
+    };
+    document.getElementById("reset").onclick = () => {
+      if (!confirm("全スコアを0にしますか？")) return;
+      teams.forEach(t => t.score = 0); save(); render();
+    };
+    render();
+  </script>
+</body>
+</html>
