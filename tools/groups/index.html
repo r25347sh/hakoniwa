@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>グループ分け | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { --bg:#0c1210; --text:#e8ebe6; --muted:#8a9488; --accent:#bb8fce; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:1.5rem; max-width:720px; margin:0 auto; }
+    a.back { color:var(--muted); text-decoration:none; font-size:0.9rem; }
+    h1 { font-size:1.3rem; margin:1rem 0 0.5rem; }
+    textarea { width:100%; height:120px; background:#141c18; border:1px solid rgba(255,255,255,0.12); border-radius:12px; color:var(--text); padding:0.75rem; margin:0.5rem 0 1rem; }
+    .row { display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center; margin-bottom:1rem; }
+    input[type=number] { width:4rem; padding:0.4rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:#141c18; color:var(--text); }
+    button { background:var(--accent); color:#1a0a20; border:none; padding:0.65rem 1.2rem; border-radius:999px; font-weight:600; cursor:pointer; }
+    .groups { display:grid; gap:1rem; }
+    .group { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:1rem; }
+    .group h3 { font-size:0.95rem; color:var(--accent); margin-bottom:0.5rem; }
+    .group ul { list-style:none; display:flex; flex-wrap:wrap; gap:0.4rem; }
+    .group li { background:rgba(255,255,255,0.08); padding:0.3rem 0.7rem; border-radius:999px; font-size:0.9rem; }
+    .hint { color:var(--muted); font-size:0.85rem; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../">← HAKONIWA</a>
+  <h1>グループ分け</h1>
+  <p class="hint">名簿を1行1名で入力し、グループ数を指定して分けます。</p>
+  <textarea id="list" placeholder="名前を1行ずつ…"></textarea>
+  <div class="row">
+    <label>グループ数 <input type="number" id="n" min="2" max="20" value="4" /></label>
+    <button id="go">分ける</button>
+  </div>
+  <div class="groups" id="out"></div>
+  <script>
+    const listEl = document.getElementById("list");
+    listEl.value = localStorage.getItem("hakoniwa-groups-list") || "";
+    listEl.onchange = () => localStorage.setItem("hakoniwa-groups-list", listEl.value);
+    document.getElementById("go").onclick = () => {
+      let names = listEl.value.split(/\n/).map(s => s.trim()).filter(Boolean);
+      if (names.length < 2) { document.getElementById("out").textContent = "2名以上入力してください"; return; }
+      for (let i = names.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [names[i], names[j]] = [names[j], names[i]];
+      }
+      const n = Math.min(20, Math.max(2, +document.getElementById("n").value || 2));
+      const groups = Array.from({ length: n }, () => []);
+      names.forEach((name, i) => groups[i % n].push(name));
+      document.getElementById("out").innerHTML = groups.map((g, i) =>
+        `<div class="group"><h3>グループ ${i + 1}（${g.length}名）</h3><ul>${g.map(x => `<li>${x}</li>`).join("")}</ul></div>`
+      ).join("");
+    };
+  </script>
+</body>
+</html>
