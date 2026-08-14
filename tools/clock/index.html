@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大きな時計 | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { --bg:#0c1210; --text:#e8ebe6; --accent:#58d68d; --muted:#8a9488; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem; }
+    a.back { position:fixed; top:1rem; left:1rem; color:var(--muted); text-decoration:none; }
+    .digital { font-size:clamp(3.5rem,18vw,8rem); font-variant-numeric:tabular-nums; font-weight:700; letter-spacing:0.06em; }
+    .date { color:var(--muted); font-size:clamp(1rem,3vw,1.4rem); margin-top:0.75rem; }
+    .toggle { margin-top:2rem; }
+    .toggle button {
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+      color:var(--text); padding:0.5rem 1rem; border-radius:999px; cursor:pointer; margin:0 0.25rem;
+    }
+    .toggle button.active { background:var(--accent); color:#0c1210; border:none; font-weight:600; }
+    #analog { display:none; margin-top:1rem; }
+    canvas { max-width:min(90vw,360px); }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../">← HAKONIWA</a>
+  <div id="digital-wrap">
+    <div class="digital" id="time">--:--:--</div>
+    <div class="date" id="date"></div>
+  </div>
+  <canvas id="analog" width="360" height="360"></canvas>
+  <div class="toggle">
+    <button class="active" id="btn-d">デジタル</button>
+    <button id="btn-a">アナログ</button>
+  </div>
+  <script>
+    const timeEl = document.getElementById("time");
+    const dateEl = document.getElementById("date");
+    const canvas = document.getElementById("analog");
+    const ctx = canvas.getContext("2d");
+    let mode = "d";
+    const days = ["日","月","火","水","木","金","土"];
+    function tick() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2,"0");
+      const m = String(now.getMinutes()).padStart(2,"0");
+      const s = String(now.getSeconds()).padStart(2,"0");
+      timeEl.textContent = h + ":" + m + ":" + s;
+      dateEl.textContent = now.getFullYear() + "年" + (now.getMonth()+1) + "月" + now.getDate() + "日（" + days[now.getDay()] + "）";
+      if (mode === "a") drawAnalog(now);
+    }
+    function drawAnalog(now) {
+      const cx = 180, cy = 180, r = 160;
+      ctx.clearRect(0,0,360,360);
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.fillStyle = "#141c18"; ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 4; ctx.stroke();
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a)*r*0.85, cy + Math.sin(a)*r*0.85);
+        ctx.lineTo(cx + Math.cos(a)*r*0.95, cy + Math.sin(a)*r*0.95);
+        ctx.strokeStyle = "#58d68d"; ctx.lineWidth = 3; ctx.stroke();
+      }
+      const h = now.getHours() % 12 + now.getMinutes()/60;
+      const m = now.getMinutes() + now.getSeconds()/60;
+      const s = now.getSeconds();
+      function hand(ang, len, w, col) {
+        const a = ang * Math.PI / 30 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a)*len, cy + Math.sin(a)*len);
+        ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.stroke();
+      }
+      hand(h * 5, r*0.5, 6, "#e8ebe6");
+      hand(m, r*0.7, 4, "#58d68d");
+      hand(s, r*0.78, 2, "#e74c3c");
+    }
+    document.getElementById("btn-d").onclick = function() {
+      mode = "d"; this.classList.add("active");
+      document.getElementById("btn-a").classList.remove("active");
+      document.getElementById("digital-wrap").style.display = "block";
+      canvas.style.display = "none";
+    };
+    document.getElementById("btn-a").onclick = function() {
+      mode = "a"; this.classList.add("active");
+      document.getElementById("btn-d").classList.remove("active");
+      document.getElementById("digital-wrap").style.display = "none";
+      canvas.style.display = "block";
+    };
+    setInterval(tick, 250); tick();
+  </script>
+</body>
+</html>
