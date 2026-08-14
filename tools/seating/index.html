@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>座席表メーカー | HAKONIWA</title>
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml"/>
+<style>
+:root{--bg:#f3f6ee;--card:#fff;--text:#2a3528;--muted:#6a7a64;--accent:#4a9a5a;--border:rgba(60,90,50,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;max-width:640px;margin:0 auto}
+a.back{color:var(--muted);text-decoration:none;font-size:.9rem}
+h1{font-size:1.35rem;margin:1rem 0 .75rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.25rem;box-shadow:0 8px 28px rgba(40,60,30,.06);margin-bottom:1rem}
+button{font:inherit;cursor:pointer;border:none;border-radius:999px;padding:.7rem 1.2rem;background:var(--accent);color:#fff;font-weight:600}
+button.ghost{background:#fff;color:var(--text);border:1px solid var(--border)}
+input,textarea{padding:.5rem .75rem;border:1px solid var(--border);border-radius:10px;font:inherit}
+textarea{width:100%;margin-top:.35rem}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.5rem 0}
+.muted{color:var(--muted);font-size:.88rem}
+</style>
+</head>
+<body>
+<a class="back" href="../../">← HAKONIWA</a>
+<h1>座席表メーカー</h1>
+<div class="card">
+  <div class="row">
+    <label>行 <input type="number" id="rows" value="5" min="1" max="12" style="width:4rem"/></label>
+    <label>列 <input type="number" id="cols" value="6" min="1" max="12" style="width:4rem"/></label>
+    <button id="build">作る</button>
+    <button class="ghost" id="rand">シャッフル配置</button>
+  </div>
+  <label class="muted">名簿（1行1名）</label>
+  <textarea id="names" rows="4" placeholder="名前を入力…"></textarea>
+</div>
+<div class="card" id="grid" style="display:grid;gap:6px"></div>
+<script>
+function build(names){
+  const r=+document.getElementById("rows").value||5,c=+document.getElementById("cols").value||6;
+  const g=document.getElementById("grid");
+  g.style.gridTemplateColumns="repeat("+c+",1fr)";
+  g.innerHTML="";
+  for(let i=0;i<r*c;i++){
+    const d=document.createElement("div");
+    d.style.cssText="aspect-ratio:1.2;border:1px solid var(--border);border-radius:8px;display:grid;place-items:center;font-size:.8rem;background:#fafcf8;padding:4px;text-align:center";
+    d.textContent=names[i]||"";
+    d.contentEditable="true";
+    g.appendChild(d);
+  }
+}
+document.getElementById("build").onclick=()=>build([]);
+document.getElementById("rand").onclick=()=>{
+  let names=document.getElementById("names").value.split(/\n/).map(s=>s.trim()).filter(Boolean);
+  for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]]}
+  build(names);
+};
+document.getElementById("build").click();
+</script>
+</body>
+</html>

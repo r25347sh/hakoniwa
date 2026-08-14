@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>信号タイマー | HAKONIWA</title>
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml"/>
+<style>
+:root{--bg:#f3f6ee;--card:#fff;--text:#2a3528;--muted:#6a7a64;--accent:#4a9a5a;--border:rgba(60,90,50,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;max-width:560px;margin:0 auto}
+a.back{color:var(--muted);text-decoration:none;font-size:.9rem}
+h1{font-size:1.35rem;margin:1rem 0 .75rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.25rem;box-shadow:0 8px 28px rgba(40,60,30,.06);text-align:center}
+button{font:inherit;cursor:pointer;border:none;border-radius:999px;padding:.7rem 1.2rem;background:var(--accent);color:#fff;font-weight:600;margin:.25rem}
+button.ghost{background:#fff;color:var(--text);border:1px solid var(--border)}
+.big{font-size:2.5rem;font-weight:700;margin:1rem 0;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted);font-size:.88rem}
+input[type=number]{width:4rem;padding:.4rem;border:1px solid var(--border);border-radius:8px}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;align-items:center;margin:.5rem 0}
+</style>
+</head>
+<body>
+<a class="back" href="../../">← HAKONIWA</a>
+<h1>信号タイマー</h1>
+<div class="card">
+  <p class="muted">発表・作業の時間配分（緑→黄→赤）</p>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin:1.5rem 0">
+    <div id="r" style="width:70px;height:70px;border-radius:50%;background:#ccc"></div>
+    <div id="y" style="width:70px;height:70px;border-radius:50%;background:#ccc"></div>
+    <div id="g" style="width:70px;height:70px;border-radius:50%;background:#ccc"></div>
+  </div>
+  <div class="big" id="t">—</div>
+  <div class="row">
+    <label class="muted">緑 <input type="number" id="ng" value="3" min="1"/> 分</label>
+    <label class="muted">黄 <input type="number" id="ny" value="1" min="0"/> 分</label>
+    <label class="muted">赤 <input type="number" id="nr" value="0.5" min="0" step="0.5"/> 分</label>
+  </div>
+  <div class="row">
+    <button id="start">スタート</button>
+    <button class="ghost" id="stop">止める</button>
+  </div>
+</div>
+<script>
+let left=0,phase="g",iv=null;
+const R=document.getElementById("r"),Y=document.getElementById("y"),G=document.getElementById("g"),T=document.getElementById("t");
+function paint(){
+  R.style.background=phase==="r"?"#e74c3c":"#ddd";
+  Y.style.background=phase==="y"?"#f1c40f":"#ddd";
+  G.style.background=phase==="g"?"#2ecc71":"#ddd";
+  const m=Math.floor(left/60),s=left%60;
+  T.textContent=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+}
+function tick(){
+  if(left<=0){
+    if(phase==="g"){phase="y";left=Math.round((+document.getElementById("ny").value||0)*60)}
+    else if(phase==="y"){phase="r";left=Math.round((+document.getElementById("nr").value||0)*60)}
+    else{clearInterval(iv);iv=null;T.textContent="終了";return}
+  }else left--;
+  paint();
+}
+document.getElementById("start").onclick=()=>{
+  clearInterval(iv);phase="g";left=Math.round((+document.getElementById("ng").value||1)*60);paint();
+  iv=setInterval(tick,1000);
+};
+document.getElementById("stop").onclick=()=>{clearInterval(iv);iv=null};
+</script>
+</body>
+</html>

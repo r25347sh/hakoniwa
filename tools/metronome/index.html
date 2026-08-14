@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>メトロノーム | HAKONIWA</title>
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml"/>
+<style>
+:root{--bg:#f3f6ee;--card:#fff;--text:#2a3528;--muted:#6a7a64;--accent:#4a9a5a;--border:rgba(60,90,50,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;max-width:560px;margin:0 auto}
+a.back{color:var(--muted);text-decoration:none;font-size:.9rem}
+h1{font-size:1.35rem;margin:1rem 0 .75rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.25rem;box-shadow:0 8px 28px rgba(40,60,30,.06);text-align:center}
+button{font:inherit;cursor:pointer;border:none;border-radius:999px;padding:.7rem 1.2rem;background:var(--accent);color:#fff;font-weight:600}
+.big{font-size:clamp(2.5rem,12vw,4.5rem);font-weight:700;margin:1rem 0;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted);font-size:.88rem}
+input[type=range]{width:100%}
+</style>
+</head>
+<body>
+<a class="back" href="../../">← HAKONIWA</a>
+<h1>メトロノーム</h1>
+<div class="card">
+  <div class="big" id="bpm">100</div>
+  <p class="muted">BPM</p>
+  <input type="range" id="range" min="40" max="208" value="100"/>
+  <div style="margin-top:1rem"><button id="tog">スタート</button></div>
+  <div id="dot" style="width:24px;height:24px;border-radius:50%;background:var(--accent);margin:1.5rem auto;opacity:.3"></div>
+</div>
+<script>
+let bpm=100,on=false,id=null,ctx=null;
+const range=document.getElementById("range"), bpmEl=document.getElementById("bpm"), dot=document.getElementById("dot");
+range.oninput=()=>{bpm=+range.value;bpmEl.textContent=bpm;if(on)restart()};
+function click(){
+  try{
+    if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);o.frequency.value=880;g.gain.value=.12;
+    o.start();g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.08);o.stop(ctx.currentTime+.08);
+  }catch{}
+  dot.style.opacity="1";setTimeout(()=>dot.style.opacity=".3",80);
+}
+function restart(){clearInterval(id);id=setInterval(click,60000/bpm)}
+document.getElementById("tog").onclick=function(){
+  on=!on;this.textContent=on?"ストップ":"スタート";
+  if(on){click();restart()}else clearInterval(id);
+};
+</script>
+</body>
+</html>
