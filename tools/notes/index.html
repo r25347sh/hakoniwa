@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>付箋メモ | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { --bg:#0c1210; --text:#1a1a1a; --muted:#8a9488; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui,sans-serif; background:#0c1210; min-height:100vh; padding:1rem; }
+    a.back { color:var(--muted); text-decoration:none; font-size:0.9rem; }
+    h1 { color:#e8ebe6; font-size:1.2rem; margin:0.75rem 0; }
+    .bar { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
+    .bar button {
+      border:none; padding:0.5rem 1rem; border-radius:999px; cursor:pointer; font-size:0.9rem;
+      background:rgba(255,255,255,0.1); color:#e8ebe6;
+    }
+    .board { position:relative; min-height:70vh; background:#141c18; border-radius:16px; border:1px solid rgba(255,255,255,0.08); overflow:hidden; }
+    .note {
+      position:absolute; width:180px; min-height:140px; padding:0.75rem; border-radius:4px;
+      box-shadow:2px 4px 12px rgba(0,0,0,0.35); cursor:grab; font-size:0.9rem; line-height:1.45;
+      resize:both; overflow:auto;
+    }
+    .note:active { cursor:grabbing; }
+    .note .del { position:absolute; top:4px; right:6px; background:none; border:none; cursor:pointer; opacity:0.5; font-size:0.85rem; }
+    .note .del:hover { opacity:1; }
+    .note textarea { width:100%; height:calc(100% - 8px); border:none; background:transparent; resize:none; font:inherit; outline:none; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../">← HAKONIWA</a>
+  <h1>付箋メモ</h1>
+  <div class="bar">
+    <button data-c="#fef3c7">黄</button>
+    <button data-c="#dbeafe">青</button>
+    <button data-c="#dcfce7">緑</button>
+    <button data-c="#fce7f3">桃</button>
+    <button data-c="#f3e8ff">紫</button>
+    <button id="clear">全削除</button>
+  </div>
+  <div class="board" id="board"></div>
+  <script>
+    const KEY = "hakoniwa-notes";
+    let notes = JSON.parse(localStorage.getItem(KEY) || "[]");
+    const board = document.getElementById("board");
+    function save() { localStorage.setItem(KEY, JSON.stringify(notes)); }
+    function render() {
+      board.innerHTML = "";
+      notes.forEach((n, i) => {
+        const el = document.createElement("div");
+        el.className = "note";
+        el.style.left = n.x + "px";
+        el.style.top = n.y + "px";
+        el.style.background = n.color;
+        el.style.zIndex = n.z || i;
+        el.innerHTML = `<button class="del" data-i="${i}">×</button><textarea data-i="${i}">${n.text || ""}</textarea>`;
+        board.appendChild(el);
+        let drag = false, ox, oy;
+        el.addEventListener("pointerdown", e => {
+          if (e.target.tagName === "TEXTAREA" || e.target.classList.contains("del")) return;
+          drag = true; ox = e.clientX - n.x; oy = e.clientY - n.y;
+          el.setPointerCapture(e.pointerId);
+          n.z = Date.now(); el.style.zIndex = n.z;
+        });
+        el.addEventListener("pointermove", e => {
+          if (!drag) return;
+          n.x = Math.max(0, e.clientX - ox);
+          n.y = Math.max(0, e.clientY - oy);
+          el.style.left = n.x + "px"; el.style.top = n.y + "px";
+        });
+        el.addEventListener("pointerup", () => { drag = false; save(); });
+        el.querySelector("textarea").oninput = e => { notes[i].text = e.target.value; save(); };
+        el.querySelector(".del").onclick = () => { notes.splice(i, 1); save(); render(); };
+      });
+    }
+    document.querySelectorAll(".bar button[data-c]").forEach(btn => {
+      btn.onclick = () => {
+        notes.push({ x: 40 + Math.random()*80, y: 40 + Math.random()*60, color: btn.dataset.c, text: "", z: Date.now() });
+        save(); render();
+      };
+    });
+    document.getElementById("clear").onclick = () => {
+      if (confirm("すべての付箋を削除しますか？")) { notes = []; save(); render(); }
+    };
+    render();
+  </script>
+</body>
+</html>
