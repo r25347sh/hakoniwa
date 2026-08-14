@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>サイコロ | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { --bg:#0c1210; --text:#e8ebe6; --muted:#8a9488; --accent:#e74c3c; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.5rem; }
+    a.back { position:fixed; top:1rem; left:1rem; color:var(--muted); text-decoration:none; }
+    .dice-area { display:flex; flex-wrap:wrap; gap:1rem; justify-content:center; min-height:120px; margin:2rem 0; }
+    .die {
+      width:88px; height:88px; background:#f5f5f0; color:#1a1a1a; border-radius:14px;
+      display:grid; place-items:center; font-size:2.5rem; font-weight:700;
+      box-shadow:0 8px 24px rgba(0,0,0,0.4);
+    }
+    .die.rolling { animation:roll 0.12s infinite; }
+    @keyframes roll { 50%{ transform:rotate(15deg) scale(0.95); } }
+    .row { display:flex; gap:0.75rem; flex-wrap:wrap; justify-content:center; align-items:center; margin:0.75rem 0; }
+    button, select, input {
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+      color:var(--text); padding:0.6rem 1rem; border-radius:999px; font-size:0.95rem; cursor:pointer;
+    }
+    button.primary { background:var(--accent); color:#fff; border:none; font-weight:600; }
+    input[type=number] { width:4rem; text-align:center; border-radius:8px; }
+    .sum { font-size:1.25rem; color:var(--muted); margin-top:1rem; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../">← HAKONIWA</a>
+  <h1 style="font-size:1.3rem;margin-bottom:0.5rem;">サイコロ</h1>
+  <div class="row">
+    <label>個数 <input type="number" id="count" min="1" max="12" value="2" /></label>
+    <label>面数
+      <select id="faces">
+        <option value="6">6面</option>
+        <option value="4">4面</option>
+        <option value="8">8面</option>
+        <option value="10">10面</option>
+        <option value="12">12面</option>
+        <option value="20">20面</option>
+      </select>
+    </label>
+  </div>
+  <div class="dice-area" id="dice"></div>
+  <button class="primary" id="roll">振る</button>
+  <p class="sum" id="sum"></p>
+  <script>
+    const faces = document.getElementById("faces");
+    const count = document.getElementById("count");
+    const area = document.getElementById("dice");
+    const sumEl = document.getElementById("sum");
+    const facesMap = {6:["⚀","⚁","⚂","⚃","⚄","⚅"]};
+    function rollOnce(n) { return 1 + Math.floor(Math.random() * n); }
+    document.getElementById("roll").onclick = () => {
+      const n = +faces.value, c = Math.min(12, Math.max(1, +count.value || 1));
+      area.innerHTML = "";
+      const values = [];
+      for (let i = 0; i < c; i++) {
+        const d = document.createElement("div");
+        d.className = "die rolling";
+        area.appendChild(d);
+        values.push(0);
+        (function(el, idx) {
+          let t = 0;
+          const iv = setInterval(() => {
+            const v = rollOnce(n);
+            el.textContent = facesMap[n] ? facesMap[n][v-1] : v;
+            if (++t > 12) {
+              clearInterval(iv);
+              el.classList.remove("rolling");
+              values[idx] = v;
+              el.textContent = facesMap[n] ? facesMap[n][v-1] : v;
+              if (values.every(x => x > 0))
+                sumEl.textContent = c > 1 ? "合計: " + values.reduce((a,b)=>a+b,0) : "";
+            }
+          }, 60);
+        })(d, i);
+      }
+    };
+    document.getElementById("roll").click();
+  </script>
+</body>
+</html>
