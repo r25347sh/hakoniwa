@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>授業タイマー | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { --bg:#0c1210; --accent:#5dade2; --text:#e8ebe6; --muted:#8a9488; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem; }
+    a.back { position:fixed; top:1rem; left:1rem; color:var(--muted); text-decoration:none; font-size:0.9rem; }
+    a.back:hover { color:var(--text); }
+    .display { font-size:clamp(4rem,20vw,9rem); font-variant-numeric:tabular-nums; font-weight:700; letter-spacing:0.04em; line-height:1; margin:1rem 0; }
+    .display.warn { color:#f5b041; }
+    .display.danger { color:#e74c3c; animation:pulse 1s infinite; }
+    @keyframes pulse { 50%{ opacity:0.6; } }
+    .presets { display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:center; margin-bottom:1.5rem; }
+    .presets button, .controls button {
+      background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+      color:var(--text); padding:0.6rem 1rem; border-radius:999px; cursor:pointer; font-size:0.95rem;
+    }
+    .presets button:hover, .controls button:hover { background:rgba(255,255,255,0.12); }
+    .controls { display:flex; gap:0.75rem; flex-wrap:wrap; justify-content:center; }
+    .controls .primary { background:var(--accent); color:#0c1210; border:none; font-weight:600; }
+    .label { color:var(--muted); font-size:0.85rem; margin-bottom:0.5rem; text-align:center; }
+    .custom { display:flex; gap:0.5rem; align-items:center; margin:1rem 0; }
+    .custom input { width:4rem; padding:0.4rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:#141c18; color:var(--text); text-align:center; }
+    #bell-panel, #sw-panel { display:none; text-align:center; }
+    .bell-btn { font-size:4rem; background:none; border:none; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../">← HAKONIWA</a>
+  <div id="timer-panel">
+    <p class="label">授業タイマー</p>
+    <div class="display" id="time">05:00</div>
+    <div class="presets">
+      <button data-sec="60">1分</button>
+      <button data-sec="180">3分</button>
+      <button data-sec="300">5分</button>
+      <button data-sec="600">10分</button>
+      <button data-sec="900">15分</button>
+      <button data-sec="1800">30分</button>
+    </div>
+    <div class="custom">
+      <input type="number" id="min" min="0" max="99" value="5" /> 分
+      <input type="number" id="sec" min="0" max="59" value="0" /> 秒
+      <button id="set-custom">セット</button>
+    </div>
+    <div class="controls">
+      <button class="primary" id="start">スタート</button>
+      <button id="pause">一時停止</button>
+      <button id="reset">リセット</button>
+    </div>
+  </div>
+  <div id="sw-panel">
+    <p class="label">ストップウォッチ</p>
+    <div class="display" id="sw-time">00:00.0</div>
+    <div class="controls">
+      <button class="primary" id="sw-start">スタート</button>
+      <button id="sw-lap">ラップ</button>
+      <button id="sw-reset">リセット</button>
+    </div>
+    <ul id="laps" style="list-style:none;margin-top:1.5rem;color:var(--muted);font-variant-numeric:tabular-nums;"></ul>
+  </div>
+  <div id="bell-panel">
+    <p class="label">注目ベル</p>
+    <button class="bell-btn" id="bell" title="鳴らす">🔔</button>
+    <p style="color:var(--muted);margin-top:1rem;font-size:0.9rem">クリックでチャイム</p>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const mode = params.get("mode") || "timer";
+    if (mode === "stopwatch") {
+      document.getElementById("timer-panel").style.display = "none";
+      document.getElementById("sw-panel").style.display = "block";
+    } else if (mode === "bell") {
+      document.getElementById("timer-panel").style.display = "none";
+      document.getElementById("bell-panel").style.display = "block";
+    }
+    let total = 300, left = 300, running = false, timerId = null;
+    const timeEl = document.getElementById("time");
+    function fmt(s) {
+      const m = Math.floor(s / 60), sec = s % 60;
+      return String(m).padStart(2,"0") + ":" + String(sec).padStart(2,"0");
+    }
+    function render() {
+      timeEl.textContent = fmt(left);
+      timeEl.className = "display" + (left <= 10 && left > 0 ? " danger" : left <= 60 ? " warn" : "");
+    }
+    function tick() {
+      if (left <= 0) {
+        running = false; clearInterval(timerId);
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const o = ctx.createOscillator(); const g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.frequency.value = 880; g.gain.value = 0.15;
+          o.start(); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+          o.stop(ctx.currentTime + 1.5);
+        } catch(_) {}
+        return;
+      }
+      left--; render();
+    }
+    document.querySelectorAll(".presets button").forEach(b => {
+      b.onclick = () => { total = left = +b.dataset.sec; running = false; clearInterval(timerId); render(); };
+    });
+    document.getElementById("set-custom").onclick = () => {
+      total = left = (+document.getElementById("min").value || 0) * 60 + (+document.getElementById("sec").value || 0);
+      running = false; clearInterval(timerId); render();
+    };
+    document.getElementById("start").onclick = () => {
+      if (running) return;
+      if (left <= 0) left = total;
+      running = true; timerId = setInterval(tick, 1000);
+    };
+    document.getElementById("pause").onclick = () => { running = false; clearInterval(timerId); };
+    document.getElementById("reset").onclick = () => { running = false; clearInterval(timerId); left = total; render(); };
+    render();
+    let swStart = 0, swAcc = 0, swRun = false, swId = null, lapN = 0;
+    const swEl = document.getElementById("sw-time");
+    function swFmt(ms) {
+      const t = Math.floor(ms / 100);
+      const m = Math.floor(t / 600), s = Math.floor((t % 600) / 10), d = t % 10;
+      return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0") + "." + d;
+    }
+    function swTick() { swEl.textContent = swFmt(swAcc + (Date.now() - swStart)); }
+    document.getElementById("sw-start").onclick = function() {
+      if (swRun) {
+        swRun = false; clearInterval(swId); swAcc += Date.now() - swStart; this.textContent = "スタート";
+      } else {
+        swRun = true; swStart = Date.now(); swId = setInterval(swTick, 50); this.textContent = "ストップ";
+      }
+    };
+    document.getElementById("sw-lap").onclick = () => {
+      if (!swRun && swAcc === 0) return;
+      const ms = swRun ? swAcc + (Date.now() - swStart) : swAcc;
+      lapN++;
+      const li = document.createElement("li");
+      li.textContent = "Lap " + lapN + "  " + swFmt(ms);
+      document.getElementById("laps").prepend(li);
+    };
+    document.getElementById("sw-reset").onclick = () => {
+      swRun = false; clearInterval(swId); swAcc = 0; lapN = 0;
+      swEl.textContent = "00:00.0"; document.getElementById("laps").innerHTML = "";
+      document.getElementById("sw-start").textContent = "スタート";
+    };
+    document.getElementById("bell").onclick = () => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [523, 659, 784].forEach((f, i) => {
+          const o = ctx.createOscillator(); const g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.frequency.value = f; g.gain.value = 0.12;
+          o.start(ctx.currentTime + i * 0.12);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.8);
+          o.stop(ctx.currentTime + i * 0.12 + 0.8);
+        });
+      } catch(_) { alert("チャイム！"); }
+    };
+  </script>
+</body>
+</html>
