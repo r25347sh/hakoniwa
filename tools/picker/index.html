@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>指名・抽選 | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { --bg:#0c1210; --accent:#f5b041; --text:#e8ebe6; --muted:#8a9488; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:1.5rem; }
+    a.back { color:var(--muted); text-decoration:none; font-size:0.9rem; }
+    h1 { font-size:1.4rem; margin:1rem 0 0.5rem; }
+    textarea { width:100%; max-width:480px; height:140px; background:#141c18; border:1px solid rgba(255,255,255,0.12); border-radius:12px; color:var(--text); padding:0.75rem; font-size:1rem; resize:vertical; }
+    .row { display:flex; flex-wrap:wrap; gap:0.75rem; margin:1rem 0; align-items:center; }
+    button { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:var(--text); padding:0.65rem 1.2rem; border-radius:999px; cursor:pointer; font-size:0.95rem; }
+    button.primary { background:var(--accent); color:#1a1208; font-weight:600; border:none; }
+    .result { font-size:clamp(2rem,8vw,3.5rem); font-weight:700; text-align:center; margin:2rem 0; min-height:1.2em; color:var(--accent); }
+    .result.spin { animation:spin 0.08s infinite; color:var(--muted); }
+    @keyframes spin { 50%{ opacity:0.4; } }
+    .hint { color:var(--muted); font-size:0.85rem; margin-top:0.5rem; }
+    #wheel-canvas { display:none; max-width:100%; margin:1rem auto; }
+    input[type=number] { width:4rem; padding:0.4rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:#141c18; color:var(--text); }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../">← HAKONIWA</a>
+  <h1 id="title">指名・抽選</h1>
+  <p class="hint">1行に1名（または番号）。空行は無視されます。</p>
+  <textarea id="list" placeholder="山田&#10;佐藤&#10;鈴木"></textarea>
+  <div class="row">
+    <label>人数 <input type="number" id="count" min="1" max="20" value="1" /></label>
+    <button class="primary" id="pick">抽選する</button>
+    <button id="shuffle">シャッフル表示</button>
+  </div>
+  <div class="result" id="result">—</div>
+  <canvas id="wheel-canvas" width="360" height="360"></canvas>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const isWheel = params.get("mode") === "wheel";
+    const listEl = document.getElementById("list");
+    const result = document.getElementById("result");
+    const canvas = document.getElementById("wheel-canvas");
+    listEl.value = localStorage.getItem("hakoniwa-picker-list") || "";
+    listEl.addEventListener("change", () => localStorage.setItem("hakoniwa-picker-list", listEl.value));
+    function names() { return listEl.value.split(/\n/).map(s => s.trim()).filter(Boolean); }
+    if (isWheel) {
+      document.getElementById("title").textContent = "ルーレット";
+      canvas.style.display = "block";
+      document.getElementById("count").parentElement.style.display = "none";
+      document.getElementById("shuffle").style.display = "none";
+    }
+    function pick() {
+      const arr = names();
+      if (!arr.length) { result.textContent = "名簿を入力してください"; return; }
+      const n = Math.min(+document.getElementById("count").value || 1, arr.length);
+      result.classList.add("spin");
+      let i = 0;
+      const iv = setInterval(() => {
+        result.textContent = arr[Math.floor(Math.random() * arr.length)];
+        if (++i > 20) {
+          clearInterval(iv);
+          result.classList.remove("spin");
+          const copy = [...arr];
+          const chosen = [];
+          for (let k = 0; k < n; k++) {
+            const idx = Math.floor(Math.random() * copy.length);
+            chosen.push(copy.splice(idx, 1)[0]);
+          }
+          result.textContent = chosen.join(" ・ ");
+        }
+      }, 50);
+    }
+    document.getElementById("pick").onclick = () => { if (isWheel) spinWheel(); else pick(); };
+    document.getElementById("shuffle").onclick = () => {
+      const arr = names();
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      result.textContent = arr.join(" → ");
+      result.classList.remove("spin");
+    };
+    let angle = 0, spinning = false;
+    function drawWheel() {
+      const arr = names();
+      const ctx = canvas.getContext("2d");
+      const cx = 180, cy = 180, r = 160;
+      ctx.clearRect(0, 0, 360, 360);
+      if (!arr.length) return;
+      const slice = (Math.PI * 2) / arr.length;
+      arr.forEach((name, i) => {
+        const a0 = angle + i * slice;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, a0, a0 + slice); ctx.closePath();
+        ctx.fillStyle = `hsl(${(i * 360 / arr.length) % 360},55%,45%)`; ctx.fill();
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(a0 + slice / 2);
+        ctx.fillStyle = "#fff"; ctx.font = "14px system-ui"; ctx.textAlign = "right";
+        ctx.fillText(name.slice(0, 8), r - 12, 5); ctx.restore();
+      });
+      ctx.fillStyle = "#f5b041";
+      ctx.beginPath(); ctx.moveTo(cx, 12); ctx.lineTo(cx - 12, 36); ctx.lineTo(cx + 12, 36); ctx.fill();
+    }
+    function spinWheel() {
+      const arr = names();
+      if (!arr.length || spinning) return;
+      spinning = true;
+      const target = Math.random() * Math.PI * 2 + Math.PI * 8;
+      const start = angle;
+      const t0 = performance.now();
+      function frame(t) {
+        const p = Math.min(1, (t - t0) / 4000);
+        const ease = 1 - Math.pow(1 - p, 3);
+        angle = start + target * ease;
+        drawWheel();
+        if (p < 1) requestAnimationFrame(frame);
+        else {
+          spinning = false;
+          const slice = (Math.PI * 2) / arr.length;
+          const idx = Math.floor(((Math.PI * 1.5 - (angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / slice) % arr.length;
+          result.textContent = arr[idx];
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+    if (isWheel) { drawWheel(); listEl.addEventListener("input", drawWheel); }
+  </script>
+</body>
+</html>
