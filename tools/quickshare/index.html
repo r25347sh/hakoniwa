@@ -2,625 +2,361 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="同じリンクを開いた人同士で、テキスト・画像・ファイルをリアルタイム共有" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Quick Share | HAKONIWA</title>
   <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@600&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root {
-      --bg: #0c1210;
-      --surface: rgba(255,255,255,0.05);
-      --border: rgba(255,255,255,0.1);
-      --text: #e8ebe6;
-      --muted: #8a9488;
-      --accent: #7cb87c;
-      --accent2: #5dade2;
-      --warn: #f5b041;
-      --danger: #e74c3c;
-      --radius: 14px;
-      --font: "Zen Kaku Gothic New", system-ui, sans-serif;
+      --bg: #0a100e; --card: #121a16; --text: #e8ebe6; --muted: #7a8678;
+      --green: #6bc46b; --green-dim: rgba(107, 196, 107, 0.15); --blue: #5dade2;
+      --radius: 20px; --font: "Zen Kaku Gothic New", system-ui, sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      line-height: 1.5;
-    }
-    .bg {
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background:
-        radial-gradient(ellipse 50% 40% at 20% 10%, rgba(124,184,124,0.12), transparent),
-        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(93,173,226,0.1), transparent);
-    }
-    a.back {
-      position: relative; z-index: 2;
-      display: inline-block; margin: 1rem 1.25rem 0;
-      color: var(--muted); text-decoration: none; font-size: 0.9rem;
-    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+    a.back { position: fixed; top: 1rem; left: 1rem; z-index: 20; color: var(--muted); text-decoration: none; font-size: 0.85rem; }
     a.back:hover { color: var(--text); }
-    .wrap {
-      position: relative; z-index: 1;
-      max-width: 720px; margin: 0 auto; padding: 0.5rem 1.25rem 3rem;
+    #lobby {
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2rem 1.25rem; text-align: center;
     }
-    header.page { text-align: center; margin: 1rem 0 1.5rem; }
-    header.page h1 {
-      font-family: "Shippori Mincho", serif;
-      font-size: 1.6rem; letter-spacing: 0.06em; margin-bottom: 0.35rem;
+    #lobby h1 { font-family: "Shippori Mincho", serif; font-size: 1.75rem; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+    #lobby .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; max-width: 20em; }
+    .radar { position: relative; width: 200px; height: 200px; margin: 0 auto 2rem; }
+    .radar-ring {
+      position: absolute; inset: 0; border: 2px solid rgba(107, 196, 107, 0.2); border-radius: 50%;
+      animation: radar-pulse 2.4s ease-out infinite;
     }
-    header.page p { color: var(--muted); font-size: 0.9rem; }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.15rem 1.25rem;
-      margin-bottom: 1rem;
+    .radar-ring:nth-child(2) { animation-delay: 0.8s; }
+    .radar-ring:nth-child(3) { animation-delay: 1.6s; }
+    .radar-core {
+      position: absolute; inset: 35%; background: linear-gradient(145deg, var(--green), #3d8a3d);
+      border-radius: 50%; display: grid; place-items: center; font-size: 2rem;
+      box-shadow: 0 0 40px rgba(107, 196, 107, 0.4); animation: core-breathe 3s ease-in-out infinite;
     }
-    .status-row {
-      display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
-      justify-content: space-between;
+    @keyframes radar-pulse { 0% { transform: scale(0.4); opacity: 0.8; } 100% { transform: scale(1.15); opacity: 0; } }
+    @keyframes core-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+    .name-field {
+      width: min(100%, 260px); background: var(--card); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px; padding: 0.75rem 1.1rem; color: var(--text); font: inherit;
+      text-align: center; margin-bottom: 1.25rem; outline: none;
     }
-    .badge {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      padding: 0.35rem 0.75rem; border-radius: 999px;
-      font-size: 0.8rem; font-weight: 500;
-      background: rgba(255,255,255,0.06);
+    .name-field:focus { border-color: var(--green); }
+    .lobby-btns { display: flex; flex-direction: column; gap: 0.65rem; width: min(100%, 280px); }
+    button {
+      font-family: inherit; cursor: pointer; border: none; border-radius: 999px;
+      padding: 0.85rem 1.4rem; font-size: 0.95rem; font-weight: 600;
+      transition: transform 0.15s, filter 0.15s;
     }
-    .badge .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--muted);
+    button:active { transform: scale(0.97); }
+    .btn-main {
+      background: linear-gradient(135deg, var(--green), #4a9a4a); color: #0a100e;
+      box-shadow: 0 8px 28px rgba(107, 196, 107, 0.3);
     }
-    .badge.online .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-    .badge.connecting .dot { background: var(--warn); animation: blink 1s infinite; }
-    .badge.error .dot { background: var(--danger); }
-    @keyframes blink { 50% { opacity: 0.3; } }
-    .room-code {
-      font-variant-numeric: tabular-nums;
-      font-size: 1.35rem; font-weight: 700; letter-spacing: 0.15em;
-      color: var(--accent);
+    .btn-main:hover { filter: brightness(1.08); }
+    .btn-sub { background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid rgba(255,255,255,0.1); }
+    .btn-sub:hover { background: rgba(255,255,255,0.1); }
+    #share { display: none; min-height: 100vh; padding: 3.5rem 1rem 2rem; max-width: 520px; margin: 0 auto; }
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.25rem; gap: 0.75rem; flex-wrap: wrap;
     }
-    .room-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
-    button, .btn {
-      font-family: inherit; cursor: pointer;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      padding: 0.55rem 1rem;
-      border-radius: 999px;
-      font-size: 0.88rem;
-      transition: background 0.15s, transform 0.15s;
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.75rem;
+      border-radius: 999px; font-size: 0.8rem; background: var(--green-dim); color: var(--green);
     }
-    button:hover, .btn:hover { background: rgba(255,255,255,0.12); }
-    button.primary {
-      background: linear-gradient(135deg, var(--accent), #5a9a5a);
-      color: #0c1210; border: none; font-weight: 600;
+    .status-pill .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 8px var(--green); animation: blink 1.5s infinite;
     }
-    button.primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-    .peers {
-      display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem;
-      min-height: 1.5rem;
+    .status-pill.wait { color: #f5b041; background: rgba(245,176,65,0.12); }
+    .status-pill.wait .dot { background: #f5b041; box-shadow: none; }
+    @keyframes blink { 50% { opacity: 0.4; } }
+    .room-tag { font-size: 0.85rem; color: var(--muted); letter-spacing: 0.12em; font-weight: 600; }
+    .drop-zone {
+      position: relative; border: 2px dashed rgba(107, 196, 107, 0.35); border-radius: var(--radius);
+      background: var(--card); padding: 2.5rem 1.5rem; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s; overflow: hidden;
     }
-    .peer-chip {
-      font-size: 0.75rem; padding: 0.25rem 0.6rem;
-      border-radius: 999px; background: rgba(93,173,226,0.15);
-      color: var(--accent2); border: 1px solid rgba(93,173,226,0.25);
+    .drop-zone.drag { border-color: var(--green); background: rgba(107, 196, 107, 0.08); transform: scale(1.02); }
+    .drop-zone .icon {
+      position: relative; font-size: 2.8rem; margin-bottom: 0.75rem; display: block;
+      animation: float-icon 3s ease-in-out infinite;
     }
-    .peer-chip.you {
-      background: rgba(124,184,124,0.15);
-      color: var(--accent); border-color: rgba(124,184,124,0.3);
+    @keyframes float-icon { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    .drop-zone h2 { position: relative; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .drop-zone p { position: relative; color: var(--muted); font-size: 0.85rem; }
+    #file-input { display: none; }
+    .section-label {
+      font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); margin: 1.5rem 0 0.75rem;
     }
-    .feed {
-      height: min(42vh, 380px);
-      overflow-y: auto;
-      display: flex; flex-direction: column; gap: 0.65rem;
-      padding: 0.25rem;
+    .devices { display: flex; flex-direction: column; gap: 0.6rem; }
+    .device {
+      display: flex; align-items: center; gap: 0.85rem; padding: 0.85rem 1rem;
+      background: var(--card); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+      animation: slide-in 0.35s ease;
     }
-    .msg {
-      max-width: 88%;
-      padding: 0.65rem 0.9rem;
-      border-radius: 12px;
-      font-size: 0.92rem;
-      word-break: break-word;
-      animation: pop 0.25s ease;
+    @keyframes slide-in { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+    .device-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(145deg, var(--blue), #3a7ca5);
+      display: grid; place-items: center; font-weight: 700; font-size: 1rem; flex-shrink: 0;
     }
-    @keyframes pop {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: none; }
+    .device-avatar.me { background: linear-gradient(145deg, var(--green), #3d8a3d); }
+    .device-info { flex: 1; min-width: 0; }
+    .device-info .name { font-weight: 600; font-size: 0.95rem; }
+    .device-info .meta { font-size: 0.75rem; color: var(--muted); }
+    .device.empty { justify-content: center; color: var(--muted); font-size: 0.85rem; border-style: dashed; }
+    .transfer {
+      display: flex; align-items: center; gap: 0.85rem; padding: 0.85rem 1rem;
+      background: var(--card); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+      margin-bottom: 0.5rem; animation: slide-in 0.35s ease;
     }
-    .msg.mine {
-      align-self: flex-end;
-      background: rgba(124,184,124,0.2);
-      border: 1px solid rgba(124,184,124,0.25);
+    .transfer-icon {
+      width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.06);
+      display: grid; place-items: center; font-size: 1.3rem; flex-shrink: 0;
     }
-    .msg.theirs {
-      align-self: flex-start;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
+    .transfer-body { flex: 1; min-width: 0; }
+    .transfer-body .fname {
+      font-size: 0.9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .msg.system {
-      align-self: center;
-      background: transparent; border: none;
-      color: var(--muted); font-size: 0.8rem;
-      max-width: 100%; text-align: center;
+    .transfer-body .fmeta { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
+    .progress { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); margin-top: 0.45rem; overflow: hidden; }
+    .progress > i {
+      display: block; height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--green), var(--blue)); border-radius: 2px; transition: width 0.25s ease;
     }
-    .msg .meta {
-      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.2rem;
+    .transfer a.dl { color: var(--green); font-size: 0.8rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+    .share-panel {
+      margin-top: 1.5rem; padding: 1.25rem; background: var(--card); border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,0.08); text-align: center;
     }
-    .msg img {
-      max-width: 100%; border-radius: 8px; margin-top: 0.35rem;
-      display: block;
+    .share-panel p { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.85rem; }
+    #qr { width: 160px; height: 160px; margin: 0 auto 1rem; background: #fff; border-radius: 12px; padding: 8px; }
+    #qr canvas { width: 100% !important; height: 100% !important; display: block; }
+    .share-actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+    .share-actions button { font-size: 0.85rem; padding: 0.6rem 1.1rem; }
+    .toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #1e2a22; color: var(--text); padding: 0.7rem 1.3rem; border-radius: 999px;
+      font-size: 0.85rem; border: 1px solid rgba(107,196,107,0.3); opacity: 0; transition: 0.3s ease;
+      z-index: 50; pointer-events: none;
     }
-    .msg a.file {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      color: var(--accent2); margin-top: 0.25rem;
-    }
-    .composer {
-      display: flex; gap: 0.5rem; margin-top: 0.85rem; flex-wrap: wrap;
-    }
-    .composer input[type="text"] {
-      flex: 1; min-width: 160px;
-      background: #141c18; border: 1px solid var(--border);
-      border-radius: 999px; padding: 0.65rem 1rem;
-      color: var(--text); font-family: inherit; font-size: 0.95rem;
-      outline: none;
-    }
-    .composer input[type="text"]:focus {
-      border-color: rgba(124,184,124,0.45);
-    }
-    .composer input[type="file"] { display: none; }
-    .hint {
-      color: var(--muted); font-size: 0.8rem; margin-top: 1rem;
-      text-align: center; line-height: 1.6;
-    }
-    .hint kbd {
-      display: inline-block; padding: 0.1rem 0.4rem;
-      background: rgba(255,255,255,0.08); border-radius: 4px;
-      font-size: 0.75rem; border: 1px solid var(--border);
-    }
-    .lobby { text-align: center; padding: 1.5rem 0.5rem; }
-    .lobby h2 {
-      font-family: "Shippori Mincho", serif;
-      font-size: 1.25rem; margin-bottom: 0.75rem;
-    }
-    .lobby p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
-    .lobby .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
-    .name-input {
-      width: 100%; max-width: 240px; margin: 0 auto 1rem;
-      display: block;
-      background: #141c18; border: 1px solid var(--border);
-      border-radius: 999px; padding: 0.65rem 1rem;
-      color: var(--text); font-family: inherit; font-size: 0.95rem;
-      text-align: center; outline: none;
-    }
-    #app-panel { display: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
-  <div class="bg" aria-hidden="true"></div>
   <a class="back" href="../../">← HAKONIWA</a>
-
-  <div class="wrap">
-    <header class="page">
-      <h1>Quick Share</h1>
-      <p>同じリンクを開いた人同士で、リアルタイム共有</p>
-    </header>
-
-    <div class="card lobby" id="lobby">
-      <h2>部屋に入る</h2>
-      <p>リンクを共有した相手と同じ部屋でつながります。<br />サーバーにデータを保存しません（端末間の直接通信）。</p>
-      <input class="name-input" id="display-name" maxlength="20" placeholder="表示名（任意）" />
-      <div class="actions">
-        <button class="primary" id="btn-create">新しい部屋を作る</button>
-        <button id="btn-join-url" style="display:none">このリンクの部屋に入る</button>
-      </div>
+  <div id="lobby">
+    <div class="radar" aria-hidden="true">
+      <div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-ring"></div>
+      <div class="radar-core">📡</div>
     </div>
-
-    <div id="app-panel">
-      <div class="card">
-        <div class="status-row">
-          <span class="badge connecting" id="status-badge">
-            <span class="dot"></span>
-            <span id="status-text">接続中…</span>
-          </span>
-          <span class="room-code" id="room-display">------</span>
-        </div>
-        <div class="room-actions">
-          <button id="btn-copy-link">リンクをコピー</button>
-          <button id="btn-leave">退出</button>
-        </div>
-        <div class="peers" id="peers"></div>
-      </div>
-
-      <div class="card">
-        <div class="feed" id="feed"></div>
-        <div class="composer">
-          <input type="text" id="msg-input" placeholder="メッセージを入力…" autocomplete="off" />
-          <button id="btn-send" class="primary">送信</button>
-          <button id="btn-file" title="ファイル">📎</button>
-          <button id="btn-paste" title="クリップボード画像">📋</button>
-          <input type="file" id="file-input" multiple />
-        </div>
-      </div>
-
-      <p class="hint">
-        同じ URL を開いた人が自動でつながります。<br />
-        対応: テキスト・画像・ファイル（数MBまで推奨）・貼り付け（<kbd>Ctrl+V</kbd>）
-      </p>
+    <h1>Quick Share</h1>
+    <p class="sub">近くの端末へ、ファイルをすばやく送る。<br />Android の Quick Share のような感覚で。</p>
+    <input class="name-field" id="name" maxlength="16" placeholder="あなたの名前" />
+    <div class="lobby-btns">
+      <button class="btn-main" id="btn-host">受信を開始（ホスト）</button>
+      <button class="btn-sub" id="btn-join" style="display:none">このリンクの相手に接続</button>
     </div>
   </div>
-
+  <div id="share">
+    <div class="top-bar">
+      <span class="status-pill wait" id="status"><span class="dot"></span><span id="status-text">準備中…</span></span>
+      <span class="room-tag" id="room-tag"></span>
+    </div>
+    <div class="drop-zone" id="drop" tabindex="0" role="button">
+      <span class="icon">📂</span>
+      <h2>ファイルを送る</h2>
+      <p>タップして選択、またはここにドロップ</p>
+    </div>
+    <input type="file" id="file-input" multiple />
+    <p class="section-label">つながっている端末</p>
+    <div class="devices" id="devices"><div class="device empty">まだ相手がいません</div></div>
+    <p class="section-label" id="tx-label" style="display:none">送受信</p>
+    <div id="transfers"></div>
+    <div class="share-panel">
+      <p>相手にこの画面を見せるか、<br />リンクを送って接続してもらいます</p>
+      <div id="qr"></div>
+      <div class="share-actions">
+        <button class="btn-main" id="btn-copy">リンクをコピー</button>
+        <button class="btn-sub" id="btn-leave">終了</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
 (() => {
   "use strict";
-
-  const PREFIX = "hkqs-";
-  const MAX_FILE = 4 * 1024 * 1024;
-
+  const PREFIX = "hkqs-", MAX = 6 * 1024 * 1024;
   const $ = (s) => document.querySelector(s);
-  const lobby = $("#lobby");
-  const app = $("#app-panel");
-  const feed = $("#feed");
-  const peersEl = $("#peers");
-  const statusBadge = $("#status-badge");
-  const statusText = $("#status-text");
-  const roomDisplay = $("#room-display");
-  const msgInput = $("#msg-input");
-  const nameInput = $("#display-name");
-
-  let peer = null;
-  let roomId = null;
-  let myId = null;
-  let isHost = false;
-  let displayName = "";
-  const connections = new Map();
-
-  function randomCode(len = 6) {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let s = "";
-    const arr = new Uint8Array(len);
-    crypto.getRandomValues(arr);
-    for (let i = 0; i < len; i++) s += chars[arr[i] % chars.length];
-    return s;
+  const lobby = $("#lobby"), share = $("#share"), devicesEl = $("#devices");
+  const transfersEl = $("#transfers"), drop = $("#drop"), fileInput = $("#file-input");
+  const statusEl = $("#status"), statusText = $("#status-text");
+  let peer = null, room = null, myId = null, isHost = false, myName = "";
+  const peers = new Map();
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2200);
   }
-
+  function code(n = 6) {
+    const c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", a = new Uint8Array(n);
+    crypto.getRandomValues(a); return [...a].map((x) => c[x % c.length]).join("");
+  }
   function setStatus(kind, text) {
-    statusBadge.className = "badge " + kind;
+    statusEl.className = "status-pill" + (kind === "ok" ? "" : " wait");
     statusText.textContent = text;
   }
-
-  function addSystem(text) {
-    const el = document.createElement("div");
-    el.className = "msg system";
-    el.textContent = text;
-    feed.appendChild(el);
-    feed.scrollTop = feed.scrollHeight;
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
-
-  function addMessage({ from, name, type, body, mine }) {
-    const el = document.createElement("div");
-    el.className = "msg " + (mine ? "mine" : "theirs");
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.textContent = (mine ? "あなた" : (name || "相手")) + " · " + new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-    el.appendChild(meta);
-
-    if (type === "text") {
-      const p = document.createElement("div");
-      p.textContent = body;
-      el.appendChild(p);
-    } else if (type === "image") {
-      const img = document.createElement("img");
-      img.src = body;
-      img.alt = "共有画像";
-      el.appendChild(img);
-    } else if (type === "file") {
-      const a = document.createElement("a");
-      a.className = "file";
-      a.href = body.data;
-      a.download = body.name || "file";
-      a.textContent = "⬇ " + (body.name || "ファイル") + (body.size ? ` (${Math.round(body.size / 1024)} KB)` : "");
-      el.appendChild(a);
+  function renderDevices() {
+    devicesEl.innerHTML = "";
+    const me = document.createElement("div"); me.className = "device";
+    me.innerHTML = '<div class="device-avatar me">' + (myName || "?").slice(0, 1) + '</div><div class="device-info"><div class="name">' + escapeHtml(myName) + '（自分）</div><div class="meta">' + (isHost ? "ホスト · 受信待機中" : "接続済み") + '</div></div>';
+    devicesEl.appendChild(me);
+    if (!peers.size) {
+      const empty = document.createElement("div"); empty.className = "device empty";
+      empty.textContent = "相手を待っています… QRまたはリンクを共有"; devicesEl.appendChild(empty); return;
     }
-    feed.appendChild(el);
-    feed.scrollTop = feed.scrollHeight;
-  }
-
-  function renderPeers() {
-    peersEl.innerHTML = "";
-    const you = document.createElement("span");
-    you.className = "peer-chip you";
-    you.textContent = (displayName || "あなた") + (isHost ? " · ホスト" : "");
-    peersEl.appendChild(you);
-    connections.forEach((v) => {
-      const c = document.createElement("span");
-      c.className = "peer-chip";
-      c.textContent = v.name || "参加者";
-      peersEl.appendChild(c);
+    peers.forEach((p) => {
+      const d = document.createElement("div"); d.className = "device";
+      d.innerHTML = '<div class="device-avatar">' + (p.name || "?").slice(0, 1) + '</div><div class="device-info"><div class="name">' + escapeHtml(p.name || "端末") + '</div><div class="meta">接続中 · ファイルを送れます</div></div>';
+      devicesEl.appendChild(d);
     });
   }
-
-  function broadcast(payload, exceptId) {
-    const data = JSON.stringify(payload);
-    connections.forEach((v, id) => {
-      if (id === exceptId) return;
-      if (v.conn && v.conn.open) {
-        try { v.conn.send(data); } catch (_) {}
-      }
-    });
-  }
-
-  function handlePayload(payload, fromId) {
-    if (!payload || !payload.type) return;
-
-    if (payload.type === "hello") {
-      const entry = connections.get(fromId);
-      if (entry) entry.name = payload.name || "参加者";
-      renderPeers();
-      addSystem((payload.name || "誰か") + " が入室しました");
-      const c = connections.get(fromId);
-      if (c && c.conn.open) {
-        c.conn.send(JSON.stringify({ type: "hello-ack", name: displayName, peerId: myId }));
-      }
-      if (isHost) {
-        connections.forEach((v, id) => {
-          if (id === fromId) return;
-          try {
-            c.conn.send(JSON.stringify({ type: "peer-hint", peerId: id, name: v.name }));
-          } catch (_) {}
-        });
-      }
-      return;
-    }
-
-    if (payload.type === "hello-ack") {
-      const entry = connections.get(fromId);
-      if (entry) entry.name = payload.name || "参加者";
-      renderPeers();
-      return;
-    }
-
-    if (payload.type === "peer-hint" && payload.peerId) {
-      connectToPeer(payload.peerId);
-      return;
-    }
-
-    if (payload.type === "text" || payload.type === "image" || payload.type === "file") {
-      const entry = connections.get(fromId);
-      addMessage({
-        from: fromId,
-        name: entry ? entry.name : payload.name,
-        type: payload.type,
-        body: payload.body,
-        mine: false,
-      });
-      if (isHost) broadcast(payload, fromId);
-    }
-  }
-
-  function wireConnection(conn) {
+  function hostId(r) { return PREFIX + r + "-host"; }
+  function wire(conn) {
     conn.on("open", () => {
-      connections.set(conn.peer, { conn, name: "参加者" });
-      renderPeers();
-      setStatus("online", connections.size + " 人と接続中");
-      conn.send(JSON.stringify({ type: "hello", name: displayName, peerId: myId }));
+      peers.set(conn.peer, { conn, name: "端末" }); renderDevices();
+      setStatus("ok", peers.size + " 台と接続中");
+      conn.send(JSON.stringify({ t: "hi", name: myName })); toast("端末がつながりました");
     });
     conn.on("data", (raw) => {
-      try {
-        const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
-        handlePayload(payload, conn.peer);
-      } catch (_) {}
+      let msg; try { msg = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { return; }
+      if (msg.t === "hi") {
+        const p = peers.get(conn.peer); if (p) p.name = msg.name || "端末"; renderDevices();
+        conn.send(JSON.stringify({ t: "hi-ok", name: myName }));
+      } else if (msg.t === "hi-ok") {
+        const p = peers.get(conn.peer); if (p) p.name = msg.name || "端末"; renderDevices();
+      } else if (msg.t === "file") receiveFile(msg, conn.peer);
     });
     conn.on("close", () => {
-      const entry = connections.get(conn.peer);
-      connections.delete(conn.peer);
-      renderPeers();
-      addSystem((entry && entry.name ? entry.name : "誰か") + " が退出しました");
-      setStatus(connections.size ? "online" : "connecting", connections.size ? connections.size + " 人と接続中" : "待機中…");
+      peers.delete(conn.peer); renderDevices();
+      setStatus(peers.size ? "ok" : "wait", peers.size ? peers.size + " 台と接続中" : "待機中");
+      toast("端末が切断されました");
     });
-    conn.on("error", () => {});
   }
-
-  function connectToPeer(remoteId) {
-    if (!peer || remoteId === myId || connections.has(remoteId)) return;
-    try {
-      const conn = peer.connect(remoteId, { reliable: true });
-      wireConnection(conn);
-    } catch (_) {}
+  function connectTo(id) {
+    if (!peer || id === myId || peers.has(id)) return;
+    try { wire(peer.connect(id, { reliable: true })); } catch (_) {}
   }
-
-  function hostPeerId(room) {
-    return PREFIX + room + "-host";
-  }
-
-  function startAsHost(room) {
-    isHost = true;
-    myId = hostPeerId(room);
-    peer = new Peer(myId, { debug: 0 });
-    peer.on("open", (id) => {
-      setStatus("online", "待機中（ホスト）");
-      addSystem("部屋 " + room + " を作成しました。リンクを共有してください。");
-    });
-    peer.on("connection", (conn) => wireConnection(conn));
+  function startHost(r) {
+    isHost = true; myId = hostId(r); peer = new Peer(myId, { debug: 0 });
+    peer.on("open", () => { setStatus("ok", "受信待機中"); toast("準備完了 — リンクを共有してください"); });
+    peer.on("connection", wire);
     peer.on("error", (err) => {
-      if (String(err).includes("is taken") || (err && err.type === "unavailable-id")) {
-        destroyPeer();
-        startAsGuest(room);
-      } else {
-        setStatus("error", "接続エラー");
-        addSystem("エラー: " + (err.type || err.message || err));
-      }
+      if (err && (err.type === "unavailable-id" || String(err).includes("taken"))) { destroy(); startGuest(r); }
+      else { setStatus("wait", "エラー"); toast("接続エラー: " + (err.type || err)); }
     });
   }
-
-  function startAsGuest(room) {
-    isHost = false;
-    myId = PREFIX + room + "-" + randomCode(4).toLowerCase();
+  function startGuest(r) {
+    isHost = false; myId = PREFIX + r + "-" + code(4).toLowerCase();
     peer = new Peer(myId, { debug: 0 });
     peer.on("open", () => {
-      setStatus("connecting", "ホストに接続中…");
-      connectToPeer(hostPeerId(room));
-      let tries = 0;
-      const iv = setInterval(() => {
-        if (connections.size > 0 || tries++ > 8) {
-          clearInterval(iv);
-          if (!connections.size) setStatus("connecting", "ホスト待機中…（再接続します）");
-          return;
-        }
-        if (!connections.size) connectToPeer(hostPeerId(room));
-      }, 1500);
+      setStatus("wait", "接続中…"); connectTo(hostId(r));
+      let n = 0;
+      const iv = setInterval(() => { if (peers.size || ++n > 10) { clearInterval(iv); return; } connectTo(hostId(r)); }, 1200);
     });
-    peer.on("connection", (conn) => wireConnection(conn));
-    peer.on("error", (err) => {
-      setStatus("error", "接続エラー");
-      addSystem("エラー: " + (err.type || err.message || err));
-    });
+    peer.on("connection", wire);
+    peer.on("error", (err) => { setStatus("wait", "エラー"); toast("接続エラー: " + (err.type || err)); });
   }
-
-  function destroyPeer() {
-    connections.forEach((v) => { try { v.conn.close(); } catch (_) {} });
-    connections.clear();
-    if (peer) {
-      try { peer.destroy(); } catch (_) {}
-      peer = null;
-    }
+  function destroy() {
+    peers.forEach((p) => { try { p.conn.close(); } catch {} }); peers.clear();
+    if (peer) { try { peer.destroy(); } catch {} peer = null; }
   }
-
-  function enterRoom(room) {
-    roomId = room.toUpperCase();
-    displayName = (nameInput.value || "").trim() || "ゲスト" + randomCode(3);
-    roomDisplay.textContent = roomId;
-    lobby.style.display = "none";
-    app.style.display = "block";
-    feed.innerHTML = "";
-    renderPeers();
-
-    const url = new URL(location.href);
-    url.searchParams.set("room", roomId);
-    history.replaceState(null, "", url.toString());
-
-    setStatus("connecting", "接続中…");
-    startAsHost(roomId);
+  function enter(r) {
+    room = r.toUpperCase(); myName = ($("#name").value || "").trim() || "端末" + code(2);
+    lobby.style.display = "none"; share.style.display = "block";
+    $("#room-tag").textContent = "ROOM " + room;
+    const url = new URL(location.href); url.searchParams.set("room", room); history.replaceState(null, "", url);
+    drawQR(url.toString()); renderDevices(); startHost(room);
   }
-
-  function leaveRoom() {
-    destroyPeer();
-    app.style.display = "none";
-    lobby.style.display = "block";
-    const url = new URL(location.href);
-    url.searchParams.delete("room");
-    history.replaceState(null, "", url.pathname + url.search);
+  function drawQR(text) {
+    const box = $("#qr"); box.innerHTML = "";
+    if (window.QRCode) {
+      QRCode.toCanvas(text, { width: 144, margin: 1, color: { dark: "#0a100e", light: "#ffffff" } }, (err, canvas) => {
+        if (!err) box.appendChild(canvas); else box.textContent = "QR生成失敗";
+      });
+    } else box.innerHTML = '<p style="font-size:0.75rem;color:#666;padding:1rem">リンクコピーを使ってください</p>';
   }
-
-  function sendText() {
-    const text = msgInput.value.trim();
-    if (!text) return;
-    msgInput.value = "";
-    const payload = { type: "text", body: text, name: displayName };
-    addMessage({ type: "text", body: text, mine: true, name: displayName });
-    broadcast(payload);
+  function sizeLabel(n) {
+    if (n < 1024) return n + " B"; if (n < 1048576) return (n / 1024).toFixed(1) + " KB"; return (n / 1048576).toFixed(1) + " MB";
   }
-
-  function sendFile(file) {
-    if (!file) return;
-    if (file.size > MAX_FILE) {
-      addSystem("ファイルが大きすぎます（目安 4MB 以下）");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      if (file.type.startsWith("image/")) {
-        const payload = { type: "image", body: dataUrl, name: displayName };
-        addMessage({ type: "image", body: dataUrl, mine: true, name: displayName });
-        broadcast(payload);
-      } else {
-        const payload = {
-          type: "file",
-          body: { data: dataUrl, name: file.name, size: file.size },
-          name: displayName,
-        };
-        addMessage({ type: "file", body: payload.body, mine: true, name: displayName });
-        broadcast(payload);
+  function addTransfer({ name, size, direction, progress }) {
+    $("#tx-label").style.display = "block";
+    const el = document.createElement("div"); el.className = "transfer";
+    const icon = /\.(png|jpe?g|gif|webp|svg)$/i.test(name) ? "🖼" : /\.(mp4|webm|mov)$/i.test(name) ? "🎬" : /\.(mp3|wav|m4a)$/i.test(name) ? "🎵" : "📄";
+    el.innerHTML = '<div class="transfer-icon">' + icon + '</div><div class="transfer-body"><div class="fname">' + escapeHtml(name) + '</div><div class="fmeta">' + direction + ' · ' + sizeLabel(size) + '</div><div class="progress"><i style="width:' + (progress || 0) + '%"></i></div></div><span class="dl-slot"></span>';
+    transfersEl.prepend(el);
+    return {
+      setProgress(p) { const bar = el.querySelector(".progress > i"); if (bar) bar.style.width = Math.min(100, p) + "%"; },
+      done(url) {
+        this.setProgress(100);
+        const slot = el.querySelector(".dl-slot");
+        if (url && slot) { const a = document.createElement("a"); a.className = "dl"; a.href = url; a.download = name; a.textContent = "保存"; slot.appendChild(a); }
+        el.querySelector(".fmeta").textContent = direction + " · 完了 · " + sizeLabel(size);
       }
     };
-    reader.readAsDataURL(file);
   }
-
-  $("#btn-create").onclick = () => enterRoom(randomCode(6));
-
-  const params = new URLSearchParams(location.search);
-  const existingRoom = (params.get("room") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (existingRoom.length >= 4) {
-    $("#btn-join-url").style.display = "inline-flex";
-    $("#btn-join-url").textContent = "部屋 " + existingRoom + " に入る";
-    $("#btn-join-url").onclick = () => enterRoom(existingRoom);
+  function sendFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    if (!peers.size) { toast("先に相手と接続してください"); return; }
+    files.forEach((file) => {
+      if (file.size > MAX) { toast(file.name + " は大きすぎます（目安6MB以下）"); return; }
+      const tx = addTransfer({ name: file.name, size: file.size, direction: "送信中", progress: 10 });
+      const reader = new FileReader();
+      reader.onprogress = (e) => { if (e.lengthComputable) tx.setProgress(10 + (e.loaded / e.total) * 70); };
+      reader.onload = () => {
+        tx.setProgress(85);
+        const payload = JSON.stringify({ t: "file", name: file.name, size: file.size, mime: file.type || "application/octet-stream", data: reader.result, from: myName });
+        peers.forEach((p) => { if (p.conn && p.conn.open) { try { p.conn.send(payload); } catch (_) {} } });
+        tx.done(reader.result); toast("送信しました: " + file.name);
+      };
+      reader.onerror = () => toast("読み込みに失敗しました");
+      reader.readAsDataURL(file);
+    });
   }
-
-  $("#btn-copy-link").onclick = async () => {
-    try {
-      await navigator.clipboard.writeText(location.href);
-      addSystem("リンクをコピーしました");
-    } catch (_) {
-      prompt("このリンクをコピーしてください", location.href);
-    }
+  function receiveFile(msg, fromId) {
+    const p = peers.get(fromId);
+    const from = (p && p.name) || msg.from || "相手";
+    const tx = addTransfer({ name: msg.name || "file", size: msg.size || 0, direction: from + " から受信", progress: 100 });
+    tx.done(msg.data); toast("受信: " + (msg.name || "ファイル"));
+  }
+  $("#btn-host").onclick = () => enter(code(6));
+  const q = new URLSearchParams(location.search).get("room");
+  if (q && q.length >= 4) {
+    $("#btn-join").style.display = "block";
+    $("#btn-join").textContent = "部屋 " + q.toUpperCase() + " に接続";
+    $("#btn-join").onclick = () => enter(q.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+  }
+  drop.onclick = () => fileInput.click();
+  fileInput.onchange = () => { sendFiles(fileInput.files); fileInput.value = ""; };
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("drag"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("drag"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("drag"); sendFiles(e.dataTransfer.files); });
+  $("#btn-copy").onclick = async () => {
+    try { await navigator.clipboard.writeText(location.href); toast("リンクをコピーしました"); }
+    catch { prompt("コピーしてください", location.href); }
   };
-
-  $("#btn-leave").onclick = leaveRoom;
-  $("#btn-send").onclick = sendText;
-  msgInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendText();
-    }
-  });
-
-  $("#btn-file").onclick = () => $("#file-input").click();
-  $("#file-input").onchange = (e) => {
-    Array.from(e.target.files || []).forEach(sendFile);
-    e.target.value = "";
+  $("#btn-leave").onclick = () => {
+    destroy(); share.style.display = "none"; lobby.style.display = "flex";
+    const u = new URL(location.href); u.searchParams.delete("room"); history.replaceState(null, "", u.pathname);
   };
-
-  $("#btn-paste").onclick = async () => {
-    try {
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const imgType = item.types.find((t) => t.startsWith("image/"));
-        if (imgType) {
-          const blob = await item.getType(imgType);
-          sendFile(new File([blob], "paste.png", { type: imgType }));
-          return;
-        }
-      }
-      addSystem("クリップボードに画像がありません");
-    } catch (_) {
-      addSystem("クリップボードを読めませんでした。Ctrl+V で貼り付けてみてください");
-    }
-  };
-
-  document.addEventListener("paste", (e) => {
-    if (app.style.display === "none") return;
-    const items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) sendFile(file);
-        return;
-      }
-    }
-  });
-
-  document.addEventListener("dragover", (e) => e.preventDefault());
-  document.addEventListener("drop", (e) => {
-    if (app.style.display === "none") return;
-    e.preventDefault();
-    Array.from(e.dataTransfer.files || []).forEach(sendFile);
-  });
 })();
   </script>
 </body>
