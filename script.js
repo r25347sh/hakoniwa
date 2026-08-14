@@ -5,6 +5,7 @@
   "use strict";
 
   const TOOLS = [
+    { id: "quickshare", title: "Quick Share", desc: "同じリンクを開いた人同士で、テキスト・画像・ファイルをリアルタイム共有。", icon: "📡", href: "tools/quickshare/", tag: "NEW", accent: "#5dade2" },
     { id: "blackboard", title: "黒板", desc: "フルスクリーン黒板。チョーク・消し・複数ページ・ズーム対応。", icon: "✎", href: "tools/blackboard/bb.html", tag: "人気", accent: "#7cb87c" },
     { id: "timer", title: "授業タイマー", desc: "残り時間を大きく表示。プリセットやアラーム付き。", icon: "⏱", href: "tools/timer/", tag: "時間", accent: "#5dade2" },
     { id: "picker", title: "指名・抽選", desc: "名簿や番号からランダムに1人（または複数）を選出。", icon: "🎲", href: "tools/picker/", tag: "参加", accent: "#f5b041" },
