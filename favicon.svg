@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#1a2f1a"/>
+  <rect x="8" y="36" width="48" height="20" rx="4" fill="#3d2b1f"/>
+  <path d="M20 36c0-8 4-14 8-18 2 6 6 12 6 18" stroke="#5aa85a" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M36 36c0-10 5-16 10-20 1 7 4 14 4 20" stroke="#6db86d" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <circle cx="24" cy="22" r="5" fill="#7cb87c"/>
+  <circle cx="42" cy="18" r="6" fill="#58d68d"/>
+  <text x="32" y="52" text-anchor="middle" fill="#c4a574" font-size="10" font-family="serif" font-weight="700">庭</text>
+</svg>
