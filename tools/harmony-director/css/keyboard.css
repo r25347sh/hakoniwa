@@ -1,0 +1,99 @@
+/* Virtual Keyboard */
+
+.keyboard-section {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 8px 16px;
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+
+.keyboard {
+  display: flex;
+  position: relative;
+  height: 140px;
+  min-width: 900px;
+  user-select: none;
+  touch-action: none;
+}
+
+.key {
+  position: relative;
+  border-radius: 0 0 4px 4px;
+  cursor: pointer;
+  transition: background 0.05s, transform 0.05s;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: #555;
+}
+
+.key.white {
+  flex: 1 0 auto;
+  width: 28px;
+  height: 100%;
+  background: linear-gradient(180deg, #f8f6f0 0%, #e8e4d8 100%);
+  border: 1px solid #c8c4b8;
+  border-top: none;
+  z-index: 1;
+  margin-left: -1px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.key.white:hover {
+  background: linear-gradient(180deg, #fff 0%, #f0ece0 100%);
+}
+
+.key.white.active,
+.key.white:active {
+  background: linear-gradient(180deg, #d8d0c0 0%, #c8c0b0 100%);
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.key.black {
+  width: 18px;
+  height: 58%;
+  background: linear-gradient(180deg, #2a2a2e 0%, #111114 100%);
+  border: 1px solid #000;
+  z-index: 2;
+  margin-left: -9px;
+  margin-right: -9px;
+  color: #888;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+}
+
+.key.black:hover {
+  background: linear-gradient(180deg, #3a3a40 0%, #1a1a1e 100%);
+}
+
+.key.black.active,
+.key.black:active {
+  background: linear-gradient(180deg, #1a1a1e 0%, #0a0a0c 100%);
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.key .label {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.key.white .label {
+  color: #666;
+}
+
+.key.black .label {
+  color: #999;
+  font-size: 0.55rem;
+}
+
+/* C note highlight for orientation */
+.key[data-note="C"] .label {
+  color: var(--accent-dim);
+  font-weight: 600;
+}
