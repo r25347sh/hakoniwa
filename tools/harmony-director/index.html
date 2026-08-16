@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmony Director Simulator | HD-300 / HD-200</title>
+  <meta name="description" content="Yamaha Harmony Director HD-300 / HD-200 professional web simulator for wind band training">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/panel.css">
+  <link rel="stylesheet" href="css/keyboard.css">
+  <link rel="stylesheet" href="css/lcd.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Header / Model Switcher -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="logo">YAMAHA</span>
+        <span class="product-name">Harmony Director</span>
+      </div>
+      <div class="model-switcher">
+        <button id="btn-hd200" class="model-btn" data-model="HD-200">HD-200</button>
+        <button id="btn-hd300" class="model-btn active" data-model="HD-300">HD-300</button>
+      </div>
+      <div class="header-actions">
+        <button id="btn-midi" class="icon-btn" title="MIDI Input">MIDI</button>
+        <button id="btn-settings" class="icon-btn" title="Settings">⚙</button>
+      </div>
+    </header>
+
+    <!-- Main Device Body -->
+    <main class="device-body" id="device">
+      <!-- Left Control Section -->
+      <section class="control-left">
+        <div class="volume-section">
+          <label>MAIN VOL</label>
+          <input type="range" id="main-vol" min="0" max="100" value="70" class="slider vertical">
+          <label>BALANCE</label>
+          <input type="range" id="balance" min="0" max="100" value="50" class="slider vertical">
+        </div>
+
+        <div class="voice-section">
+          <div class="section-title">VOICE</div>
+          <div class="btn-group">
+            <button class="voice-btn" data-cat="wood">WOOD</button>
+            <button class="voice-btn" data-cat="brass">BRASS</button>
+            <button class="voice-btn" data-cat="organ">ORGAN</button>
+            <button class="voice-btn active" data-cat="piano">PIANO/OTHERS</button>
+          </div>
+          <div class="voice-select">
+            <select id="voice-select">
+              <option value="piano">Grand Piano</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="temperament-section">
+          <div class="section-title">TEMPERAMENT</div>
+          <div class="btn-group">
+            <button class="temp-btn active" data-temp="equal">EQUAL</button>
+            <button class="temp-btn" data-temp="pure">PURE</button>
+            <button class="temp-btn" data-temp="individual">INDIV</button>
+          </div>
+          <button id="btn-lock" class="lock-btn">LOCK</button>
+        </div>
+      </section>
+
+      <!-- Center: LCD + Status -->
+      <section class="center-panel">
+        <div class="lcd-container">
+          <div class="lcd" id="lcd">
+            <div class="lcd-row">
+              <span id="lcd-voice">PIANO</span>
+              <span id="lcd-pitch">A=440.0</span>
+            </div>
+            <div class="lcd-row">
+              <span id="lcd-temp">EQUAL</span>
+              <span id="lcd-root">C</span>
+              <span id="lcd-transpose">T=0</span>
+            </div>
+            <div class="lcd-row main">
+              <span id="lcd-tempo">♩=120</span>
+              <span id="lcd-beat">4/4</span>
+              <span id="lcd-mem">M1</span>
+            </div>
+            <div class="lcd-row status">
+              <span id="lcd-status">READY</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="transport">
+          <button id="btn-hold" class="transport-btn">HOLD</button>
+          <button id="btn-soundback" class="transport-btn">SOUND BACK</button>
+          <button id="btn-rec" class="transport-btn rec">● REC</button>
+          <button id="btn-play" class="transport-btn">▶ PLAY</button>
+        </div>
+
+        <div class="metro-section">
+          <div class="section-title">METRONOME / RHYTHM</div>
+          <div class="metro-controls">
+            <button id="btn-metro-start" class="metro-btn">START</button>
+            <button id="btn-tap" class="metro-btn">TAP</button>
+            <input type="number" id="tempo-input" min="32" max="280" value="120" class="tempo-input">
+            <select id="ref-note">
+              <option value="8">♪ 8th</option>
+              <option value="4" selected>♩ 4th</option>
+              <option value="dotted4">♩. dotted</option>
+            </select>
+          </div>
+          <div class="metro-sliders">
+            <div class="metro-vol"><label>1</label><input type="range" class="metro-note-vol" data-beat="1" min="0" max="100" value="80"></div>
+            <div class="metro-vol"><label>2</label><input type="range" class="metro-note-vol" data-beat="2" min="0" max="100" value="50"></div>
+            <div class="metro-vol"><label>3</label><input type="range" class="metro-note-vol" data-beat="3" min="0" max="100" value="50"></div>
+            <div class="metro-vol"><label>4</label><input type="range" class="metro-note-vol" data-beat="4" min="0" max="100" value="50"></div>
+            <div class="metro-vol"><label>5</label><input type="range" class="metro-note-vol" data-beat="5" min="0" max="100" value="50"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Control Section -->
+      <section class="control-right">
+        <div class="transpose-section">
+          <div class="section-title">TRANSPOSE</div>
+          <div class="btn-group compact">
+            <button id="btn-trans-down" class="small-btn">−</button>
+            <span id="trans-display">0</span>
+            <button id="btn-trans-up" class="small-btn">+</button>
+          </div>
+        </div>
+
+        <div class="octave-section">
+          <label>OCTAVE</label>
+          <input type="range" id="octave" min="-2" max="2" value="0" step="1" class="slider">
+          <span id="octave-display">0</span>
+        </div>
+
+        <div class="pitch-section">
+          <label>REF PITCH</label>
+          <input type="range" id="ref-pitch" min="4300" max="4503" value="4400" step="1" class="slider">
+          <span id="pitch-display">440.0 Hz</span>
+        </div>
+
+        <div class="training-section hd300-only">
+          <div class="section-title">TRAINING</div>
+          <button id="btn-training" class="full-btn">TRAINING MODE</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Keyboard -->
+    <section class="keyboard-section">
+      <div class="keyboard" id="keyboard"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>Harmony Director Simulator · Educational use only · Not affiliated with Yamaha</span>
+      <span id="polyphony-display">Poly: 0</span>
+    </footer>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
