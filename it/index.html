@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="見た目重視のWebサイトプロトタイプCMS。色・フォント・余白・レイアウトを調整してライブプレビュー。" />
+  <title>見た目プロトタイプ CMS | HAKONIWA</title>
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@500;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ui-bg: #f3f6ee;
+      --ui-surface: #ffffff;
+      --ui-border: #e2e8d8;
+      --ui-text: #2c3a2e;
+      --ui-muted: #6b7a6e;
+      --ui-accent: #4a9a5a;
+      --ui-accent-soft: rgba(74, 154, 90, 0.12);
+      --ui-radius: 12px;
+      --ui-shadow: 0 4px 24px rgba(44, 58, 46, 0.06);
+      --preview-primary: #4a9a5a;
+      --preview-secondary: #2c3a2e;
+      --preview-accent: #c4a574;
+      --preview-bg: #fafbf7;
+      --preview-surface: #ffffff;
+      --preview-text: #1a221c;
+      --preview-muted: #6b7a6e;
+      --preview-radius: 12px;
+      --preview-font: "Inter", "Noto Sans JP", sans-serif;
+      --preview-heading-font: "Shippori Mincho", serif;
+      --preview-max-width: 1100px;
+      --preview-spacing: 1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Zen Kaku Gothic New", sans-serif;
+      background: var(--ui-bg);
+      color: var(--ui-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* ===== Toolbar ===== */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 1rem;
+      background: var(--ui-surface);
+      border-bottom: 1px solid var(--ui-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      flex-wrap: wrap;
+    }
+    .toolbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-decoration: none;
+      color: var(--ui-text);
+      margin-right: 0.5rem;
+    }
+    .toolbar-brand span.mark {
+      width: 28px; height: 28px;
+      background: var(--ui-accent);
+      color: #fff;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 0.85rem;
+    }
+    .toolbar-actions { display: flex; gap: 0.4rem; margin-left: auto; flex-wrap: wrap; }
+    .btn {
+      appearance: none;
+      border: 1px solid var(--ui-border);
+      background: var(--ui-surface);
+      color: var(--ui-text);
+      padding: 0.4rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .btn:hover { background: var(--ui-accent-soft); border-color: var(--ui-accent); }
+    .btn-primary {
+      background: var(--ui-accent);
+      color: #fff;
+      border-color: var(--ui-accent);
+    }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-ghost { background: transparent; }
+    /* ===== Layout ===== */
+    .workspace {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .panel { max-height: 45vh; overflow: auto; border-right: none; border-bottom: 1px solid var(--ui-border); }
+    }
+    .panel {
+      background: var(--ui-surface);
+      border-right: 1px solid var(--ui-border);
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    .panel h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ui-muted);
+      margin: 1.25rem 0 0.55rem;
+      font-weight: 700;
+    }
+    .panel h2:first-child { margin-top: 0; }
+    .field { margin-bottom: 0.7rem; }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      color: var(--ui-muted);
+    }
+    .field input[type="text"],
+    .field input[type="number"],
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      background: #fff;
+      color: var(--ui-text);
+    }
+    .field textarea { min-height: 64px; resize: vertical; }
+    .field input[type="color"] {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      padding: 2px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .color-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .range-row input[type="range"] { flex: 1; }
+    .range-val { font-size: 0.78rem; color: var(--ui-muted); min-width: 2.5em; text-align: right; }
+    .chip-group { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .chip {
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid var(--ui-border);
+      font-size: 0.75rem;
+      cursor: pointer;
+      background: #fff;
+      transition: 0.12s;
+    }
+    .chip.active {
+      background: var(--ui-accent);
+      color: #fff;
+      border-color: var(--ui-accent);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.35rem 0;
+      font-size: 0.85rem;
+    }
+    .toggle {
+      width: 40px; height: 22px;
+      background: #d0d8cc;
+      border-radius: 999px;
+      position: relative;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .toggle.on { background: var(--ui-accent); }
+    .toggle::after {
+      content: "";
+      position: absolute;
+      width: 16px; height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .toggle.on::after { left: 21px; }
+    /* ===== Preview ===== */
+    .preview-wrap {
+      display: flex;
+      flex-direction: column;
+      background: #e8ede3;
+      min-height: 0;
+    }
+    .preview-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.75rem;
+      background: var(--ui-surface);
+      border-bottom: 1px solid var(--ui-border);
+      font-size: 0.78rem;
+      color: var(--ui-muted);
+    }
+    .device-btns { display: flex; gap: 0.25rem; }
+    .device-btn {
+      width: 32px; height: 28px;
+      border: 1px solid var(--ui-border);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 0.85rem;
+    }
+    .device-btn.active { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+    .preview-frame {
+      flex: 1;
+      overflow: auto;
+      padding: 1.25rem;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .preview-device {
+      width: 100%;
+      max-width: 100%;
+      background: var(--preview-bg);
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+      overflow: hidden;
+      transition: max-width 0.25s;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .preview-device.tablet { max-width: 768px; }
+    .preview-device.mobile { max-width: 390px; }
+    /* Preview site styles (driven by CSS vars) */
+    #preview-root {
+      font-family: var(--preview-font);
+      color: var(--preview-text);
+      background: var(--preview-bg);
+      line-height: 1.6;
+    }
+    #preview-root * { box-sizing: border-box; }
+    .p-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: calc(0.9rem * var(--preview-spacing)) calc(1.5rem * var(--preview-spacing));
+      background: var(--preview-surface);
+      border-bottom: 1px solid color-mix(in srgb, var(--preview-text) 8%, transparent);
+    }
+    .p-logo {
+      font-family: var(--preview-heading-font);
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--preview-secondary);
+      text-decoration: none;
+    }
+    .p-nav-links { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+    .p-nav-links a { color: var(--preview-muted); text-decoration: none; }
+    .p-nav-links a:hover { color: var(--preview-primary); }
+    .p-cta {
+      background: var(--preview-primary);
+      color: #fff;
+      padding: 0.45rem 1rem;
+      border-radius: calc(var(--preview-radius) * 0.7);
+      font-size: 0.85rem;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .p-hero {
+      padding: calc(3.5rem * var(--preview-spacing)) calc(1.5rem * var(--preview-spacing));
+      text-align: center;
+      max-width: var(--preview-max-width);
+      margin: 0 auto;
+    }
+    .p-hero-eyebrow {
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--preview-accent);
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    .p-hero h1 {
+      font-family: var(--preview-heading-font);
+      font-size: clamp(1.8rem, 4vw, 2.75rem);
+      line-height: 1.25;
+      color: var(--preview-secondary);
+      margin-bottom: 1rem;
+    }
+    .p-hero p {
+      color: var(--preview-muted);
+      max-width: 32em;
+      margin: 0 auto 1.75rem;
+      font-size: 1.05rem;
+    }
+    .p-hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+    .p-btn-primary {
+      background: var(--preview-primary);
+      color: #fff;
+      padding: 0.7rem 1.4rem;
+      border-radius: calc(var(--preview-radius) * 0.75);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .p-btn-ghost {
+      background: transparent;
+      color: var(--preview-secondary);
+      padding: 0.7rem 1.4rem;
+      border-radius: calc(var(--preview-radius) * 0.75);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      border: 1px solid color-mix(in srgb, var(--preview-text) 15%, transparent);
+    }
+    .p-section {
+      padding: calc(3rem * var(--preview-spacing)) calc(1.5rem * var(--preview-spacing));
+      max-width: var(--preview-max-width);
+      margin: 0 auto;
+    }
+    .p-section-head { text-align: center; margin-bottom: calc(2rem * var(--preview-spacing)); }
+    .p-section-head h2 {
+      font-family: var(--preview-heading-font);
+      font-size: 1.6rem;
+      color: var(--preview-secondary);
+      margin-bottom: 0.4rem;
+    }
+    .p-section-head p { color: var(--preview-muted); font-size: 0.95rem; }
+    .p-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: calc(1.25rem * var(--preview-spacing));
+    }
+    .p-card {
+      background: var(--preview-surface);
+      border-radius: var(--preview-radius);
+      padding: calc(1.4rem * var(--preview-spacing));
+      border: 1px solid color-mix(in srgb, var(--preview-text) 7%, transparent);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+    }
+    .p-card-icon {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--preview-primary) 15%, transparent);
+      display: grid;
+      place-items: center;
+      font-size: 1.2rem;
+      margin-bottom: 0.85rem;
+    }
+    .p-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 0.35rem;
+      color: var(--preview-secondary);
+    }
+    .p-card p { font-size: 0.9rem; color: var(--preview-muted); }
+    .p-footer {
+      margin-top: calc(2rem * var(--preview-spacing));
+      padding: calc(2rem * var(--preview-spacing)) 1.5rem;
+      background: var(--preview-secondary);
+      color: color-mix(in srgb, #fff 85%, transparent);
+      text-align: center;
+      font-size: 0.88rem;
+    }
+    .p-footer a { color: var(--preview-accent); }
+    .hidden { display: none !important; }
+    /* Export modal */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(20, 30, 22, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      width: min(640px, 100%);
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    }
+    .modal-head {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--ui-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+    }
+    .modal-body { padding: 1rem 1.25rem; overflow: auto; flex: 1; }
+    .modal-body pre {
+      background: #1e2a20;
+      color: #d4e8d0;
+      padding: 1rem;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      overflow: auto;
+      max-height: 50vh;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .modal-foot {
+      padding: 0.85rem 1.25rem;
+      border-top: 1px solid var(--ui-border);
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <a class="toolbar-brand" href="../">
+      <span class="mark">庭</span>
+      <span>見た目プロトタイプ CMS</span>
+    </a>
+    <div class="toolbar-actions">
+      <button class="btn btn-ghost" id="btn-reset" type="button">リセット</button>
+      <button class="btn" id="btn-save" type="button">保存</button>
+      <button class="btn" id="btn-load" type="button">読込</button>
+      <button class="btn btn-primary" id="btn-export" type="button">HTML書き出し</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="panel" id="panel">
+      <h2>カラー</h2>
+      <div class="color-row">
+        <div class="field">
+          <label>Primary</label>
+          <input type="color" id="c-primary" value="#4a9a5a" />
+        </div>
+        <div class="field">
+          <label>Secondary</label>
+          <input type="color" id="c-secondary" value="#2c3a2e" />
+        </div>
+        <div class="field">
+          <label>Accent</label>
+          <input type="color" id="c-accent" value="#c4a574" />
+        </div>
+        <div class="field">
+          <label>Background</label>
+          <input type="color" id="c-bg" value="#fafbf7" />
+        </div>
+        <div class="field">
+          <label>Surface</label>
+          <input type="color" id="c-surface" value="#ffffff" />
+        </div>
+        <div class="field">
+          <label>Text</label>
+          <input type="color" id="c-text" value="#1a221c" />
+        </div>
+      </div>
+
+      <h2>タイポグラフィ</h2>
+      <div class="field">
+        <label>本文フォント</label>
+        <select id="f-body">
+          <option value='"Inter", "Noto Sans JP", sans-serif'>Inter / Noto Sans JP</option>
+          <option value='"Zen Kaku Gothic New", sans-serif'>Zen Kaku Gothic New</option>
+          <option value='"Noto Sans JP", sans-serif'>Noto Sans JP</option>
+          <option value='system-ui, sans-serif'>System UI</option>
+          <option value='Georgia, "Times New Roman", serif'>Georgia (serif)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>見出しフォント</label>
+        <select id="f-heading">
+          <option value='"Shippori Mincho", serif'>Shippori Mincho</option>
+          <option value='"Zen Kaku Gothic New", sans-serif'>Zen Kaku Gothic New</option>
+          <option value='"Inter", sans-serif'>Inter</option>
+          <option value='Georgia, serif'>Georgia</option>
+          <option value='"Hiragino Mincho ProN", serif'>Hiragino Mincho</option>
+        </select>
+      </div>
+
+      <h2>レイアウト</h2>
+      <div class="field">
+        <label>角丸 (px)</label>
+        <div class="range-row">
+          <input type="range" id="r-radius" min="0" max="28" value="12" />
+          <span class="range-val" id="v-radius">12</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>余白スケール</label>
+        <div class="range-row">
+          <input type="range" id="r-spacing" min="0.7" max="1.5" step="0.05" value="1" />
+          <span class="range-val" id="v-spacing">1.0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>最大幅 (px)</label>
+        <div class="range-row">
+          <input type="range" id="r-maxw" min="720" max="1400" step="20" value="1100" />
+          <span class="range-val" id="v-maxw">1100</span>
+        </div>
+      </div>
+
+      <h2>セクション表示</h2>
+      <div class="toggle-row"><span>ナビゲーション</span><div class="toggle on" data-section="nav" id="t-nav"></div></div>
+      <div class="toggle-row"><span>ヒーロー</span><div class="toggle on" data-section="hero" id="t-hero"></div></div>
+      <div class="toggle-row"><span>カード（機能紹介）</span><div class="toggle on" data-section="cards" id="t-cards"></div></div>
+      <div class="toggle-row"><span>フッター</span><div class="toggle on" data-section="footer" id="t-footer"></div></div>
+
+      <h2>コンテンツ</h2>
+      <div class="field">
+        <label>サイト名 / ロゴ</label>
+        <input type="text" id="txt-logo" value="HAKONIWA" />
+      </div>
+      <div class="field">
+        <label>ヒーロー Eyebrow</label>
+        <input type="text" id="txt-eyebrow" value="Prototype Studio" />
+      </div>
+      <div class="field">
+        <label>ヒーロー見出し</label>
+        <input type="text" id="txt-title" value="見た目から、はじめよう。" />
+      </div>
+      <div class="field">
+        <label>ヒーロー説明</label>
+        <textarea id="txt-lead">色・フォント・余白を調整して、Webサイトの雰囲気を素早く試作できます。コードは後からで大丈夫。</textarea>
+      </div>
+      <div class="field">
+        <label>カード1 タイトル</label>
+        <input type="text" id="txt-c1t" value="カラーパレット" />
+      </div>
+      <div class="field">
+        <label>カード1 説明</label>
+        <input type="text" id="txt-c1d" value="ブランドに合う色をその場で試せます。" />
+      </div>
+      <div class="field">
+        <label>カード2 タイトル</label>
+        <input type="text" id="txt-c2t" value="タイポグラフィ" />
+      </div>
+      <div class="field">
+        <label>カード2 説明</label>
+        <input type="text" id="txt-c2d" value="見出しと本文のフォントを切り替え。" />
+      </div>
+      <div class="field">
+        <label>カード3 タイトル</label>
+        <input type="text" id="txt-c3t" value="余白と角丸" />
+      </div>
+      <div class="field">
+        <label>カード3 説明</label>
+        <input type="text" id="txt-c3d" value="密度と柔らかさをスライダーで調整。" />
+      </div>
+    </aside>
+
+    <div class="preview-wrap">
+      <div class="preview-bar">
+        <span>プレビュー</span>
+        <div class="device-btns">
+          <button class="device-btn active" data-device="desktop" title="Desktop">🖥</button>
+          <button class="device-btn" data-device="tablet" title="Tablet">📱</button>
+          <button class="device-btn" data-device="mobile" title="Mobile">📲</button>
+        </div>
+      </div>
+      <div class="preview-frame">
+        <div class="preview-device" id="preview-device">
+          <div id="preview-root">
+            <nav class="p-nav" id="sec-nav">
+              <a class="p-logo" href="#" id="pv-logo">HAKONIWA</a>
+              <div class="p-nav-links">
+                <a href="#">機能</a>
+                <a href="#">事例</a>
+                <a href="#">料金</a>
+              </div>
+              <a class="p-cta" href="#">はじめる</a>
+            </nav>
+            <section class="p-hero" id="sec-hero">
+              <p class="p-hero-eyebrow" id="pv-eyebrow">Prototype Studio</p>
+              <h1 id="pv-title">見た目から、はじめよう。</h1>
+              <p id="pv-lead">色・フォント・余白を調整して、Webサイトの雰囲気を素早く試作できます。コードは後からで大丈夫。</p>
+              <div class="p-hero-actions">
+                <a class="p-btn-primary" href="#">無料で試す</a>
+                <a class="p-btn-ghost" href="#">デモを見る</a>
+              </div>
+            </section>
+            <section class="p-section" id="sec-cards">
+              <div class="p-section-head">
+                <h2>できること</h2>
+                <p>見た目の仮説を、すぐに形に。</p>
+              </div>
+              <div class="p-cards">
+                <div class="p-card">
+                  <div class="p-card-icon">🎨</div>
+                  <h3 id="pv-c1t">カラーパレット</h3>
+                  <p id="pv-c1d">ブランドに合う色をその場で試せます。</p>
+                </div>
+                <div class="p-card">
+                  <div class="p-card-icon">🔤</div>
+                  <h3 id="pv-c2t">タイポグラフィ</h3>
+                  <p id="pv-c2d">見出しと本文のフォントを切り替え。</p>
+                </div>
+                <div class="p-card">
+                  <div class="p-card-icon">📐</div>
+                  <h3 id="pv-c3t">余白と角丸</h3>
+                  <p id="pv-c3d">密度と柔らかさをスライダーで調整。</p>
+                </div>
+              </div>
+            </section>
+            <footer class="p-footer" id="sec-footer">
+              <p>© <span id="pv-year"></span> <span id="pv-footer-name">HAKONIWA</span> — 見た目からつくるプロトタイプ</p>
+            </footer>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="export-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <span>HTML 書き出し</span>
+        <button class="btn btn-ghost" id="btn-close-modal" type="button">閉じる</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem;color:var(--ui-muted);margin-bottom:0.75rem;">下のコードをコピーして、任意の .html ファイルに貼り付けてください。</p>
+        <pre id="export-code"></pre>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="btn-copy" type="button">コピー</button>
+        <button class="btn btn-primary" id="btn-download" type="button">ダウンロード</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const root = document.documentElement;
+    const yearEl = document.getElementById("pv-year");
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+    const state = {
+      primary: "#4a9a5a",
+      secondary: "#2c3a2e",
+      accent: "#c4a574",
+      bg: "#fafbf7",
+      surface: "#ffffff",
+      text: "#1a221c",
+      bodyFont: '"Inter", "Noto Sans JP", sans-serif',
+      headingFont: '"Shippori Mincho", serif',
+      radius: 12,
+      spacing: 1,
+      maxWidth: 1100,
+      showNav: true,
+      showHero: true,
+      showCards: true,
+      showFooter: true,
+      logo: "HAKONIWA",
+      eyebrow: "Prototype Studio",
+      title: "見た目から、はじめよう。",
+      lead: "色・フォント・余白を調整して、Webサイトの雰囲気を素早く試作できます。コードは後からで大丈夫。",
+      c1t: "カラーパレット",
+      c1d: "ブランドに合う色をその場で試せます。",
+      c2t: "タイポグラフィ",
+      c2d: "見出しと本文のフォントを切り替え。",
+      c3t: "余白と角丸",
+      c3d: "密度と柔らかさをスライダーで調整。",
+    };
+
+    function apply() {
+      root.style.setProperty("--preview-primary", state.primary);
+      root.style.setProperty("--preview-secondary", state.secondary);
+      root.style.setProperty("--preview-accent", state.accent);
+      root.style.setProperty("--preview-bg", state.bg);
+      root.style.setProperty("--preview-surface", state.surface);
+      root.style.setProperty("--preview-text", state.text);
+      root.style.setProperty("--preview-muted", colorMix(state.text, 0.45));
+      root.style.setProperty("--preview-radius", state.radius + "px");
+      root.style.setProperty("--preview-font", state.bodyFont);
+      root.style.setProperty("--preview-heading-font", state.headingFont);
+      root.style.setProperty("--preview-max-width", state.maxWidth + "px");
+      root.style.setProperty("--preview-spacing", state.spacing);
+
+      document.getElementById("sec-nav").classList.toggle("hidden", !state.showNav);
+      document.getElementById("sec-hero").classList.toggle("hidden", !state.showHero);
+      document.getElementById("sec-cards").classList.toggle("hidden", !state.showCards);
+      document.getElementById("sec-footer").classList.toggle("hidden", !state.showFooter);
+
+      document.getElementById("pv-logo").textContent = state.logo;
+      document.getElementById("pv-footer-name").textContent = state.logo;
+      document.getElementById("pv-eyebrow").textContent = state.eyebrow;
+      document.getElementById("pv-title").textContent = state.title;
+      document.getElementById("pv-lead").textContent = state.lead;
+      document.getElementById("pv-c1t").textContent = state.c1t;
+      document.getElementById("pv-c1d").textContent = state.c1d;
+      document.getElementById("pv-c2t").textContent = state.c2t;
+      document.getElementById("pv-c2d").textContent = state.c2d;
+      document.getElementById("pv-c3t").textContent = state.c3t;
+      document.getElementById("pv-c3d").textContent = state.c3d;
+    }
+
+    function colorMix(hex, amount) {
+      // simple muted approximation
+      return hex;
+    }
+
+    // Color inputs
+    const colorMap = {
+      "c-primary": "primary",
+      "c-secondary": "secondary",
+      "c-accent": "accent",
+      "c-bg": "bg",
+      "c-surface": "surface",
+      "c-text": "text",
+    };
+    Object.keys(colorMap).forEach((id) => {
+      const el = document.getElementById(id);
+      el.addEventListener("input", () => {
+        state[colorMap[id]] = el.value;
+        apply();
+      });
+    });
+
+    document.getElementById("f-body").addEventListener("change", (e) => {
+      state.bodyFont = e.target.value;
+      apply();
+    });
+    document.getElementById("f-heading").addEventListener("change", (e) => {
+      state.headingFont = e.target.value;
+      apply();
+    });
+
+    const bindRange = (id, key, valId, fmt) => {
+      const el = document.getElementById(id);
+      const val = document.getElementById(valId);
+      el.addEventListener("input", () => {
+        const v = parseFloat(el.value);
+        state[key] = v;
+        val.textContent = fmt ? fmt(v) : v;
+        apply();
+      });
+    };
+    bindRange("r-radius", "radius", "v-radius");
+    bindRange("r-spacing", "spacing", "v-spacing", (v) => v.toFixed(2));
+    bindRange("r-maxw", "maxWidth", "v-maxw");
+
+    // Toggles
+    document.querySelectorAll(".toggle").forEach((t) => {
+      t.addEventListener("click", () => {
+        t.classList.toggle("on");
+        const sec = t.dataset.section;
+        const map = { nav: "showNav", hero: "showHero", cards: "showCards", footer: "showFooter" };
+        state[map[sec]] = t.classList.contains("on");
+        apply();
+      });
+    });
+
+    // Text fields
+    const textMap = {
+      "txt-logo": "logo",
+      "txt-eyebrow": "eyebrow",
+      "txt-title": "title",
+      "txt-lead": "lead",
+      "txt-c1t": "c1t",
+      "txt-c1d": "c1d",
+      "txt-c2t": "c2t",
+      "txt-c2d": "c2d",
+      "txt-c3t": "c3t",
+      "txt-c3d": "c3d",
+    };
+    Object.keys(textMap).forEach((id) => {
+      const el = document.getElementById(id);
+      el.addEventListener("input", () => {
+        state[textMap[id]] = el.value;
+        apply();
+      });
+    });
+
+    // Device switch
+    document.querySelectorAll(".device-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".device-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const device = document.getElementById("preview-device");
+        device.classList.remove("tablet", "mobile");
+        if (btn.dataset.device === "tablet") device.classList.add("tablet");
+        if (btn.dataset.device === "mobile") device.classList.add("mobile");
+      });
+    });
+
+    // Save / Load
+    const STORAGE_KEY = "hakoniwa-it-prototype";
+    document.getElementById("btn-save").addEventListener("click", () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      alert("ブラウザに保存しました。");
+    });
+    document.getElementById("btn-load").addEventListener("click", () => {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) { alert("保存データがありません。"); return; }
+      try {
+        Object.assign(state, JSON.parse(raw));
+        syncControls();
+        apply();
+        alert("読み込みました。");
+      } catch (e) {
+        alert("読み込みに失敗しました。");
+      }
+    });
+
+    function syncControls() {
+      document.getElementById("c-primary").value = state.primary;
+      document.getElementById("c-secondary").value = state.secondary;
+      document.getElementById("c-accent").value = state.accent;
+      document.getElementById("c-bg").value = state.bg;
+      document.getElementById("c-surface").value = state.surface;
+      document.getElementById("c-text").value = state.text;
+      document.getElementById("f-body").value = state.bodyFont;
+      document.getElementById("f-heading").value = state.headingFont;
+      document.getElementById("r-radius").value = state.radius;
+      document.getElementById("v-radius").textContent = state.radius;
+      document.getElementById("r-spacing").value = state.spacing;
+      document.getElementById("v-spacing").textContent = Number(state.spacing).toFixed(2);
+      document.getElementById("r-maxw").value = state.maxWidth;
+      document.getElementById("v-maxw").textContent = state.maxWidth;
+      document.getElementById("t-nav").classList.toggle("on", state.showNav);
+      document.getElementById("t-hero").classList.toggle("on", state.showHero);
+      document.getElementById("t-cards").classList.toggle("on", state.showCards);
+      document.getElementById("t-footer").classList.toggle("on", state.showFooter);
+      document.getElementById("txt-logo").value = state.logo;
+      document.getElementById("txt-eyebrow").value = state.eyebrow;
+      document.getElementById("txt-title").value = state.title;
+      document.getElementById("txt-lead").value = state.lead;
+      document.getElementById("txt-c1t").value = state.c1t;
+      document.getElementById("txt-c1d").value = state.c1d;
+      document.getElementById("txt-c2t").value = state.c2t;
+      document.getElementById("txt-c2d").value = state.c2d;
+      document.getElementById("txt-c3t").value = state.c3t;
+      document.getElementById("txt-c3d").value = state.c3d;
+    }
+
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      if (!confirm("初期状態に戻しますか？")) return;
+      location.reload();
+    });
+
+    // Export
+    function buildExportHtml() {
+      const muted = state.text;
+      return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(state.logo)} — Prototype</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: ${state.primary};
+      --secondary: ${state.secondary};
+      --accent: ${state.accent};
+      --bg: ${state.bg};
+      --surface: ${state.surface};
+      --text: ${state.text};
+      --muted: color-mix(in srgb, ${state.text} 55%, transparent);
+      --radius: ${state.radius}px;
+      --font: ${state.bodyFont};
+      --heading-font: ${state.headingFont};
+      --max-width: ${state.maxWidth}px;
+      --sp: ${state.spacing};
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.6; }
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: calc(0.9rem * var(--sp)) calc(1.5rem * var(--sp)); background: var(--surface); border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
+    .logo { font-family: var(--heading-font); font-weight: 700; font-size: 1.15rem; color: var(--secondary); text-decoration: none; }
+    .nav-links { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; }
+    .cta { background: var(--primary); color: #fff; padding: 0.45rem 1rem; border-radius: calc(var(--radius) * 0.7); font-size: 0.85rem; text-decoration: none; font-weight: 500; }
+    .hero { padding: calc(3.5rem * var(--sp)) 1.5rem; text-align: center; max-width: var(--max-width); margin: 0 auto; }
+    .eyebrow { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 0.75rem; }
+    .hero h1 { font-family: var(--heading-font); font-size: clamp(1.8rem, 4vw, 2.75rem); line-height: 1.25; color: var(--secondary); margin-bottom: 1rem; }
+    .hero p { color: var(--muted); max-width: 32em; margin: 0 auto 1.75rem; font-size: 1.05rem; }
+    .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary { background: var(--primary); color: #fff; padding: 0.7rem 1.4rem; border-radius: calc(var(--radius) * 0.75); text-decoration: none; font-weight: 600; }
+    .btn-ghost { background: transparent; color: var(--secondary); padding: 0.7rem 1.4rem; border-radius: calc(var(--radius) * 0.75); text-decoration: none; border: 1px solid color-mix(in srgb, var(--text) 15%, transparent); }
+    .section { padding: calc(3rem * var(--sp)) 1.5rem; max-width: var(--max-width); margin: 0 auto; }
+    .section-head { text-align: center; margin-bottom: calc(2rem * var(--sp)); }
+    .section-head h2 { font-family: var(--heading-font); font-size: 1.6rem; color: var(--secondary); margin-bottom: 0.4rem; }
+    .section-head p { color: var(--muted); }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: calc(1.25rem * var(--sp)); }
+    .card { background: var(--surface); border-radius: var(--radius); padding: calc(1.4rem * var(--sp)); border: 1px solid color-mix(in srgb, var(--text) 7%, transparent); }
+    .card-icon { width: 42px; height: 42px; border-radius: 10px; background: color-mix(in srgb, var(--primary) 15%, transparent); display: grid; place-items: center; font-size: 1.2rem; margin-bottom: 0.85rem; }
+    .card h3 { font-size: 1.05rem; margin-bottom: 0.35rem; color: var(--secondary); }
+    .card p { font-size: 0.9rem; color: var(--muted); }
+    .footer { margin-top: calc(2rem * var(--sp)); padding: calc(2rem * var(--sp)) 1.5rem; background: var(--secondary); color: color-mix(in srgb, #fff 85%, transparent); text-align: center; font-size: 0.88rem; }
+  </style>
+</head>
+<body>
+  ${state.showNav ? `<nav class="nav">
+    <a class="logo" href="#">${escapeHtml(state.logo)}</a>
+    <div class="nav-links"><a href="#">機能</a><a href="#">事例</a><a href="#">料金</a></div>
+    <a class="cta" href="#">はじめる</a>
+  </nav>` : ""}
+  ${state.showHero ? `<section class="hero">
+    <p class="eyebrow">${escapeHtml(state.eyebrow)}</p>
+    <h1>${escapeHtml(state.title)}</h1>
+    <p>${escapeHtml(state.lead)}</p>
+    <div class="hero-actions">
+      <a class="btn-primary" href="#">無料で試す</a>
+      <a class="btn-ghost" href="#">デモを見る</a>
+    </div>
+  </section>` : ""}
+  ${state.showCards ? `<section class="section">
+    <div class="section-head"><h2>できること</h2><p>見た目の仮説を、すぐに形に。</p></div>
+    <div class="cards">
+      <div class="card"><div class="card-icon">🎨</div><h3>${escapeHtml(state.c1t)}</h3><p>${escapeHtml(state.c1d)}</p></div>
+      <div class="card"><div class="card-icon">🔤</div><h3>${escapeHtml(state.c2t)}</h3><p>${escapeHtml(state.c2d)}</p></div>
+      <div class="card"><div class="card-icon">📐</div><h3>${escapeHtml(state.c3t)}</h3><p>${escapeHtml(state.c3d)}</p></div>
+    </div>
+  </section>` : ""}
+  ${state.showFooter ? `<footer class="footer"><p>© ${new Date().getFullYear()} ${escapeHtml(state.logo)} — 見た目からつくるプロトタイプ</p></footer>` : ""}
+</body>
+</html>`;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    const modal = document.getElementById("export-modal");
+    document.getElementById("btn-export").addEventListener("click", () => {
+      document.getElementById("export-code").textContent = buildExportHtml();
+      modal.classList.add("open");
+    });
+    document.getElementById("btn-close-modal").addEventListener("click", () => modal.classList.remove("open"));
+    modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("open"); });
+
+    document.getElementById("btn-copy").addEventListener("click", async () => {
+      const code = document.getElementById("export-code").textContent;
+      try {
+        await navigator.clipboard.writeText(code);
+        alert("コピーしました。");
+      } catch {
+        alert("コピーに失敗しました。手動で選択してください。");
+      }
+    });
+
+    document.getElementById("btn-download").addEventListener("click", () => {
+      const code = document.getElementById("export-code").textContent;
+      const blob = new Blob([code], { type: "text/html" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "prototype.html";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    apply();
+  })();
+  </script>
+</body>
+</html>
