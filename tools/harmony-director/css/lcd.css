@@ -1,86 +1,41 @@
-/* LCD Display Simulation - Classic green phosphor look */
-
-.lcd-container {
-  background: #0a1a12;
-  border: 3px solid #1a2e24;
-  border-radius: 8px;
-  padding: 4px;
-  box-shadow:
-    inset 0 0 20px rgba(0, 0, 0, 0.6),
-    0 0 0 1px #0d1f16;
-}
-
+/* LCD - green phosphor hardware style */
 .lcd {
   background: var(--lcd-bg);
+  border: 2px solid #1a3a2a;
   border-radius: 4px;
-  padding: 12px 16px;
+  padding: 8px 12px;
   font-family: var(--font-mono);
-  color: var(--lcd-text);
-  text-shadow: var(--lcd-glow);
-  min-height: 110px;
+  color: var(--lcd-fg);
+  text-shadow: 0 0 8px rgba(109, 255, 176, 0.4);
+  min-height: 88px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: relative;
   overflow: hidden;
+  box-shadow: inset 0 0 16px rgba(0,0,0,0.5);
 }
-
-/* Subtle scanline effect */
 .lcd::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.08) 2px,
-    rgba(0, 0, 0, 0.08) 4px
-  );
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
   pointer-events: none;
 }
-
-.lcd-row {
+.lcd-line {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
-  gap: 12px;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  gap: 10px;
 }
-
-.lcd-row.main {
-  font-size: 1.35rem;
+.lcd-line.big {
+  font-size: 1.2rem;
   font-weight: 700;
-  margin: 4px 0;
+  margin: 2px 0;
 }
-
-.lcd-row.status {
-  font-size: 0.75rem;
-  color: var(--lcd-dim);
-  justify-content: flex-start;
-}
-
-#lcd-voice,
-#lcd-pitch,
-#lcd-temp,
-#lcd-root,
-#lcd-transpose,
-#lcd-tempo,
-#lcd-beat,
-#lcd-mem {
-  white-space: nowrap;
-}
-
-#lcd-tempo {
-  color: #a8ffd0;
-}
-
-#lcd-status.recording {
-  color: #ff8a8a;
-  animation: blink 1s step-end infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0.3; }
-}
+.lcd-line.dim { font-size: 0.68rem; color: var(--lcd-dim); }
+#lcd-tempo { color: #9affc8; }
+#lcd-status.recording { color: #ff9a9a; animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0.35; } }
