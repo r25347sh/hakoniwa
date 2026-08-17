@@ -1,18 +1,19 @@
 /**
- * Virtual Keyboard UI & interaction
+ * Virtual Keyboard - reliable interaction + proper black key layout
  */
 
 import { state } from '../state.js';
 import { noteOn, noteOff, resumeAudio } from '../audio/engine.js';
 import { midiToNoteName } from '../audio/temperament.js';
 
-const WHITE_NOTES = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B
+const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11];
 const NOTE_OFFSETS = {
-  'HD-300': { start: 36, count: 61 }, // C2 to C7
-  'HD-200': { start: 36, count: 49 }  // C2 to C6
+  'HD-300': { start: 36, count: 61 },
+  'HD-200': { start: 36, count: 49 }
 };
 
-let pointerNotes = new Map(); // pointerId -> midi
+let pointerNotes = new Map();
+let bound = false;
 
 export function buildKeyboard() {
   const container = document.getElementById('keyboard');
@@ -22,67 +23,72 @@ export function buildKeyboard() {
   const { start, count } = NOTE_OFFSETS[state.model] || NOTE_OFFSETS['HD-300'];
   const end = start + count - 1;
 
-  // First pass: white keys
-  for (let midi = start; midi <= end; midi++) {
-    const pc = midi % 12;
-    if (WHITE_NOTES.includes(pc)) {
-      const key = createKey(midi, false);
-      container.appendChild(key);
-    }
+  // Collect whites for positioning
+  const whites = [];
+  for (let m = start; m <= end; m++) {
+    if (WHITE_PCS.includes(m % 12)) whites.push(m);
   }
 
-  // Second pass: black keys (positioned absolutely relative would be better,
-  // but flex + negative margin works for this density)
-  // We rebuild with proper structure
-  container.innerHTML = '';
-  let whiteIndex = 0;
-  for (let midi = start; midi <= end; midi++) {
-    const pc = midi % 12;
-    const isBlack = !WHITE_NOTES.includes(pc);
-    if (!isBlack) {
-      const key = createKey(midi, false);
-      container.appendChild(key);
-      whiteIndex++;
-    } else {
-      const key = createKey(midi, true);
-      // Insert black key after previous white conceptually via margin
-      container.appendChild(key);
+  const whiteW = 100 / whites.length;
+
+  // White keys
+  whites.forEach((midi, i) => {
+    const key = createKey(midi, false);
+    key.style.left = `${i * whiteW}%`;
+    key.style.width = `${whiteW}%`;
+    container.appendChild(key);
+  });
+
+  // Black keys (absolute between whites)
+  for (let m = start; m <= end; m++) {
+    if (WHITE_PCS.includes(m % 12)) continue;
+    // find white index of previous white
+    let prevWhiteIdx = -1;
+    for (let i = 0; i < whites.length; i++) {
+      if (whites[i] < m) prevWhiteIdx = i;
+      else break;
     }
+    if (prevWhiteIdx < 0) continue;
+    const key = createKey(m, true);
+    const left = (prevWhiteIdx + 1) * whiteW - whiteW * 0.32;
+    key.style.left = `${left}%`;
+    key.style.width = `${whiteW * 0.62}%`;
+    container.appendChild(key);
   }
 
-  // Event delegation
-  container.addEventListener('pointerdown', onPointerDown);
-  container.addEventListener('pointerup', onPointerUp);
-  container.addEventListener('pointercancel', onPointerUp);
-  container.addEventListener('pointerleave', onPointerUp);
-  container.addEventListener('pointermove', onPointerMove);
+  if (!bound) {
+    container.addEventListener('pointerdown', onPointerDown);
+    container.addEventListener('pointerup', onPointerUp);
+    container.addEventListener('pointercancel', onPointerUp);
+    window.addEventListener('pointerup', onPointerUp);
+    bound = true;
+  }
 }
 
 function createKey(midi, isBlack) {
   const el = document.createElement('div');
   el.className = `key ${isBlack ? 'black' : 'white'}`;
-  el.dataset.midi = midi;
-  el.dataset.note = midiToNoteName(midi).replace(/\d/, '');
-
-  const label = document.createElement('span');
-  label.className = 'label';
-  // Show only C labels for clarity
+  el.dataset.midi = String(midi);
+  el.dataset.note = midiToNoteName(midi).replace(/\d+/, '');
   if (midi % 12 === 0) {
+    const label = document.createElement('span');
+    label.className = 'label';
     label.textContent = midiToNoteName(midi);
+    el.appendChild(label);
   }
-  el.appendChild(label);
   return el;
 }
 
 function onPointerDown(e) {
   const key = e.target.closest('.key');
-  if (!key) return;
+  if (!key || !state.power) return;
   e.preventDefault();
   resumeAudio();
   const midi = parseInt(key.dataset.midi, 10);
+  if (pointerNotes.has(e.pointerId)) return;
   key.classList.add('active');
   pointerNotes.set(e.pointerId, midi);
-  key.setPointerCapture(e.pointerId);
+  try { key.setPointerCapture(e.pointerId); } catch (_) {}
   noteOn(midi, 0.85);
 }
 
@@ -95,11 +101,6 @@ function onPointerUp(e) {
   noteOff(midi);
 }
 
-function onPointerMove(e) {
-  // Optional: glissando support could go here
-}
-
-// Computer keyboard mapping (Z-X-C-V... for white, S-D-G... for black)
 const KEY_MAP = {
   KeyZ: 48, KeyS: 49, KeyX: 50, KeyD: 51, KeyC: 52,
   KeyV: 53, KeyG: 54, KeyB: 55, KeyH: 56, KeyN: 57,
@@ -114,22 +115,19 @@ const heldKeys = new Set();
 
 export function initComputerKeyboard() {
   window.addEventListener('keydown', (e) => {
-    if (e.repeat || !KEY_MAP[e.code]) return;
+    if (e.repeat || !KEY_MAP[e.code] || !state.power) return;
     if (heldKeys.has(e.code)) return;
     heldKeys.add(e.code);
     resumeAudio();
     const midi = KEY_MAP[e.code] + state.octave * 12;
     noteOn(midi, 0.8);
-    const keyEl = document.querySelector(`.key[data-midi="${midi}"]`);
-    if (keyEl) keyEl.classList.add('active');
+    document.querySelector(`.key[data-midi="${midi}"]`)?.classList.add('active');
   });
-
   window.addEventListener('keyup', (e) => {
     if (!KEY_MAP[e.code]) return;
     heldKeys.delete(e.code);
     const midi = KEY_MAP[e.code] + state.octave * 12;
     noteOff(midi);
-    const keyEl = document.querySelector(`.key[data-midi="${midi}"]`);
-    if (keyEl) keyEl.classList.remove('active');
+    document.querySelector(`.key[data-midi="${midi}"]`)?.classList.remove('active');
   });
 }
