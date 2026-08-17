@@ -5,12 +5,11 @@
 import { state, setModel } from './state.js';
 import {
   initAudio, resumeAudio, setMainVolume, setBalance,
-  startMetronome, stopMetronome, setTempo, releaseAll
+  startMetronome, stopMetronome, setTempo, releaseAll, noteOn, noteOff
 } from './audio/engine.js';
 import { midiToNoteName } from './audio/temperament.js';
 import { buildKeyboard, initComputerKeyboard } from './ui/keyboard.js';
 
-// ---- Expanded Voice Lists ----
 const VOICES = {
   wood: [
     { id: 'flute', name: 'Flute' },
@@ -45,7 +44,6 @@ const VOICES = {
   ]
 };
 
-// HD-200 classic 10 voices mapping
 const HD200_VOICES = [
   { id: 'flute', name: 'Flute' },
   { id: 'oboe', name: 'Oboe' },
@@ -59,19 +57,17 @@ const HD200_VOICES = [
   { id: 'piano', name: 'Piano' }
 ];
 
+let soundBackOn = false;
+let recording = false;
+let recChunks = [];
+let mediaRecorder = null;
+
 function updateLCD() {
   const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
-
   set('lcd-voice', state.voiceId.toUpperCase().replace('-', ' ').slice(0, 12));
   set('lcd-pitch', `A=${state.refPitch.toFixed(1)}`);
   set('lcd-cent', `${state.centOffset >= 0 ? '+' : ''}${state.centOffset.toFixed(1)}c`);
-
-  const tempLabel = {
-    'equal': 'EQUAL',
-    'pure-major': 'PURE MAJ',
-    'pure-minor': 'PURE MIN',
-    'individual': 'INDIV'
-  }[state.temperament] || 'EQUAL';
+  const tempLabel = { 'equal': 'EQUAL', 'pure-major': 'PURE MAJ', 'pure-minor': 'PURE MIN', 'individual': 'INDIV' }[state.temperament] || 'EQUAL';
   set('lcd-temp', tempLabel);
   set('lcd-root', midiToNoteName(state.rootNote).replace(/\d+/, ''));
   set('lcd-key', state.temperament.includes('minor') ? 'Minor' : 'Major');
@@ -80,7 +76,6 @@ function updateLCD() {
   set('lcd-beat', '4/4');
   set('lcd-mem', 'M1');
   set('lcd-status', state.lcd.status);
-
   const t = document.getElementById('trans-display');
   if (t) t.textContent = state.transpose;
   const o = document.getElementById('octave-display');
@@ -93,14 +88,7 @@ function populateVoices(cat) {
   const select = document.getElementById('voice-select');
   if (!select) return;
   select.innerHTML = '';
-
-  let list;
-  if (state.model === 'HD-200') {
-    list = HD200_VOICES;
-  } else {
-    list = VOICES[cat] || VOICES.piano;
-  }
-
+  const list = state.model === 'HD-200' ? HD200_VOICES : (VOICES[cat] || VOICES.piano);
   list.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.id;
@@ -113,7 +101,6 @@ function populateVoices(cat) {
 }
 
 function bindUI() {
-  // Model
   document.querySelectorAll('.model-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
@@ -125,7 +112,6 @@ function bindUI() {
     });
   });
 
-  // Power
   document.getElementById('btn-power')?.addEventListener('click', e => {
     state.power = !state.power;
     e.currentTarget.classList.toggle('active', state.power);
@@ -135,11 +121,9 @@ function bindUI() {
     updateLCD();
   });
 
-  // Volume / Balance
   document.getElementById('main-vol')?.addEventListener('input', e => setMainVolume(e.target.value / 100));
   document.getElementById('balance')?.addEventListener('input', e => setBalance(e.target.value / 100));
 
-  // Voice category
   document.querySelectorAll('.voice-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
@@ -152,12 +136,10 @@ function bindUI() {
     updateLCD();
   });
 
-  // Figure (HD-200)
   document.getElementById('fig-attack')?.addEventListener('input', e => { state.attack = e.target.value / 100; });
   document.getElementById('fig-release')?.addEventListener('input', e => { state.release = e.target.value / 100; });
   document.getElementById('fig-brill')?.addEventListener('input', e => { state.brilliance = e.target.value / 100; });
 
-  // Temperament
   document.querySelectorAll('.temp-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.temp-btn').forEach(b => b.classList.remove('active'));
@@ -175,7 +157,6 @@ function bindUI() {
     e.currentTarget.classList.toggle('active', state.autoRoot);
   });
 
-  // Transpose presets
   document.querySelectorAll('.trans-preset').forEach(btn => {
     btn.addEventListener('click', () => {
       state.transpose = parseInt(btn.dataset.trans, 10);
@@ -193,7 +174,6 @@ function bindUI() {
     updateLCD();
   });
 
-  // Octave / Pitch
   document.getElementById('octave')?.addEventListener('input', e => {
     state.octave = parseInt(e.target.value, 10);
     updateLCD();
@@ -203,13 +183,118 @@ function bindUI() {
     updateLCD();
   });
 
-  // HOLD
   document.getElementById('btn-hold')?.addEventListener('click', e => {
     state.hold = !state.hold;
     e.currentTarget.classList.toggle('active', state.hold);
     if (!state.hold) releaseAll();
     state.lcd.status = state.hold ? 'HOLD' : 'READY';
     updateLCD();
+  });
+
+  // SOUND BACK (simulated loopback beep of last chord root)
+  document.getElementById('btn-soundback')?.addEventListener('click', e => {
+    soundBackOn = !soundBackOn;
+    e.currentTarget.classList.toggle('active', soundBackOn);
+    state.lcd.status = soundBackOn ? 'SND BACK' : 'READY';
+    updateLCD();
+    if (soundBackOn) {
+      resumeAudio();
+      const n = state.rootNote || 60;
+      noteOn(n, 0.5);
+      setTimeout(() => noteOff(n, true), 400);
+    }
+  });
+
+  // REC / PLAY (MediaRecorder if mic available)
+  document.getElementById('btn-rec')?.addEventListener('click', async e => {
+    if (recording) {
+      mediaRecorder?.stop();
+      recording = false;
+      e.currentTarget.classList.remove('active');
+      state.lcd.status = 'REC STOP';
+      updateLCD();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = ev => { if (ev.data.size) recChunks.push(ev.data); };
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        state.lcd.status = 'REC READY';
+        updateLCD();
+      };
+      mediaRecorder.start();
+      recording = true;
+      e.currentTarget.classList.add('active');
+      state.lcd.status = 'RECORDING';
+      updateLCD();
+    } catch {
+      state.lcd.status = 'MIC DENY';
+      updateLCD();
+      setTimeout(() => { state.lcd.status = 'READY'; updateLCD(); }, 1500);
+    }
+  });
+
+  document.getElementById('btn-play')?.addEventListener('click', () => {
+    if (!recChunks.length) {
+      state.lcd.status = 'NO REC';
+      updateLCD();
+      setTimeout(() => { state.lcd.status = 'READY'; updateLCD(); }, 1200);
+      return;
+    }
+    const blob = new Blob(recChunks, { type: 'audio/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = new Audio(url);
+    a.play();
+    state.lcd.status = 'PLAYING';
+    updateLCD();
+    a.onended = () => { state.lcd.status = 'READY'; updateLCD(); URL.revokeObjectURL(url); };
+  });
+
+  // TRAINING (demo scale)
+  document.getElementById('btn-training')?.addEventListener('click', async () => {
+    if (!state.power) return;
+    resumeAudio();
+    state.lcd.status = 'TRAINING';
+    updateLCD();
+    const scale = [0, 2, 4, 5, 7, 9, 11, 12];
+    const base = 60 + state.transpose + state.octave * 12;
+    for (const iv of scale) {
+      noteOn(base + iv, 0.7);
+      await new Promise(r => setTimeout(r, 320));
+      noteOff(base + iv, true);
+      await new Promise(r => setTimeout(r, 40));
+    }
+    state.lcd.status = 'READY';
+    updateLCD();
+  });
+
+  // MIDI
+  document.getElementById('btn-midi')?.addEventListener('click', async e => {
+    if (!navigator.requestMIDIAccess) {
+      state.lcd.status = 'NO MIDI';
+      updateLCD();
+      return;
+    }
+    try {
+      const access = await navigator.requestMIDIAccess();
+      access.inputs.forEach(input => {
+        input.onmidimessage = msg => {
+          const [status, note, vel] = msg.data;
+          const cmd = status & 0xf0;
+          if (cmd === 0x90 && vel > 0) noteOn(note, vel / 127);
+          else if (cmd === 0x80 || (cmd === 0x90 && vel === 0)) noteOff(note);
+        };
+      });
+      e.currentTarget.classList.add('active');
+      state.lcd.status = 'MIDI ON';
+      updateLCD();
+    } catch {
+      state.lcd.status = 'MIDI FAIL';
+      updateLCD();
+    }
   });
 
   // Metronome
@@ -253,11 +338,9 @@ function bindUI() {
 
   document.getElementById('metro-sound')?.addEventListener('change', e => { state.metroSound = e.target.value; });
   document.getElementById('metro-pattern')?.addEventListener('change', e => { state.metroPattern = e.target.value; });
-
   document.querySelectorAll('.metro-note-vol').forEach(sl => {
     sl.addEventListener('input', e => {
-      const idx = parseInt(e.target.dataset.beat, 10);
-      state.metroVolumes[idx] = e.target.value / 100;
+      state.metroVolumes[parseInt(e.target.dataset.beat, 10)] = e.target.value / 100;
     });
   });
 }
@@ -278,8 +361,7 @@ function boot() {
   };
   document.addEventListener('pointerdown', unlock);
   document.addEventListener('keydown', unlock);
-
-  console.log('%cHarmony Director Simulator ready (HD-300/HD-200 full)', 'color:#e8b86d;font-weight:bold');
+  console.log('%cHarmony Director ready', 'color:#d4a84b;font-weight:bold');
 }
 
 boot();
