@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>オトシルベ100 | Pitch Guide</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="device">
+    <header class="top">
+      <div class="brand">
+        <span class="mark">音</span>
+        <div>
+          <div class="name">オトシルベ 100</div>
+          <div class="sub">Pitch Guide Trainer</div>
+        </div>
+      </div>
+      <div class="status" id="status">READY</div>
+    </header>
+
+    <section class="display">
+      <div class="target-block">
+        <div class="label">TARGET</div>
+        <div class="note-big" id="target-note">A4</div>
+        <div class="freq" id="target-freq">440.0 Hz</div>
+      </div>
+      <div class="meter-block">
+        <div class="cents-scale">
+          <span>-50</span><span>0</span><span>+50</span>
+        </div>
+        <div class="meter-track">
+          <div class="meter-needle" id="needle"></div>
+          <div class="meter-center"></div>
+        </div>
+        <div class="cents-readout" id="cents">— cent</div>
+      </div>
+      <div class="input-block">
+        <div class="label">INPUT</div>
+        <div class="note-med" id="input-note">—</div>
+        <div class="freq dim" id="input-freq">— Hz</div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="row">
+        <button class="btn" id="btn-ref" data-note="60">C4</button>
+        <button class="btn" id="btn-a" data-note="69">A4</button>
+        <button class="btn" id="btn-concert" data-note="69">Concert A</button>
+        <button class="btn primary" id="btn-drone">DRONE</button>
+      </div>
+      <div class="row">
+        <label>Ref Pitch</label>
+        <input type="range" id="ref" min="4300" max="4500" value="4400">
+        <span id="ref-val">440.0</span>
+      </div>
+      <div class="row">
+        <label>Target ±</label>
+        <button class="btn sm" id="btn-down">−</button>
+        <span id="semi">0</span>
+        <button class="btn sm" id="btn-up">+</button>
+        <button class="btn sm" id="btn-oct-down">−8ve</button>
+        <button class="btn sm" id="btn-oct-up">+8ve</button>
+      </div>
+      <div class="row">
+        <button class="btn accent" id="btn-mic">🎤 MIC ON</button>
+        <button class="btn" id="btn-hold">HOLD</button>
+        <select id="wave">
+          <option value="sine">Sine</option>
+          <option value="triangle">Triangle</option>
+          <option value="sawtooth">Saw</option>
+        </select>
+      </div>
+    </section>
+
+    <footer class="foot">
+      オトシルベ100 · 架空の音程ガイド機材 · hakoniwa original
+    </footer>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
