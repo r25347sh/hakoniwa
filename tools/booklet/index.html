@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PDFをアップロードすると、小冊子（鞍掛け綴じ）印刷用にページを組み換えてダウンロードできるツール。すべてブラウザ内で処理。" />
+  <title>PDF小冊子メーカー | HAKONIWA</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      --bg: #0c1210;
+      --surface: #141c18;
+      --text: #e8ebe6;
+      --muted: #8a9488;
+      --accent: #5dade2;
+      --accent-dim: color-mix(in srgb, #5dade2 18%, transparent);
+      --ok: #4a9a5a;
+      --warn: #e67e22;
+      --border: rgba(255,255,255,0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.25rem;
+      line-height: 1.55;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    a.back { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+    a.back:hover { color: var(--accent); }
+    h1 { font-size: 1.35rem; margin: 1rem 0 0.35rem; font-weight: 700; }
+    .lead { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.5rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .drop {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .drop:hover, .drop.dragover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .drop input { display: none; }
+    .drop-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .drop p { color: var(--muted); font-size: 0.9rem; }
+    .drop strong { color: var(--text); }
+    label.opt {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      margin: 0.75rem 0;
+      cursor: pointer;
+      font-size: 0.92rem;
+    }
+    label.opt input { margin-top: 0.2rem; accent-color: var(--accent); }
+    label.opt span.hint { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      padding: 0.85rem 1.2rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #0a1010; }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      margin-top: 0.6rem;
+    }
+    .status {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .status.show { display: block; }
+    .status.info { background: var(--accent-dim); color: var(--accent); }
+    .status.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: #7dcea0; }
+    .status.err { background: color-mix(in srgb, #e74c3c 18%, transparent); color: #f1948a; }
+    .meta {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .meta strong { color: var(--text); }
+    details.help {
+      margin-top: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      background: var(--surface);
+    }
+    details.help summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text);
+    }
+    details.help .body { margin-top: 0.75rem; color: var(--muted); font-size: 0.88rem; }
+    details.help ol { padding-left: 1.2rem; margin: 0.5rem 0; }
+    details.help li { margin: 0.3rem 0; }
+    .order-preview {
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      background: #0a100e;
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      margin-top: 0.6rem;
+      max-height: 140px;
+      overflow: auto;
+      white-space: pre-wrap;
+      color: #a8b5a4;
+      display: none;
+    }
+    .order-preview.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="../../">← HAKONIWA</a>
+    <h1>PDF小冊子メーカー</h1>
+    <p class="lead">
+      PDFをアップロードすると、鞍掛け綴じ（中綴じ）の小冊子として印刷できるようページを組み換えてダウンロードします。処理はすべて端末内で完結し、ファイルはサーバーに送られません。
+    </p>
+
+    <div class="card">
+      <div class="drop" id="drop" role="button" tabindex="0" aria-label="PDFを選択">
+        <div class="drop-icon">📄</div>
+        <p><strong>クリック</strong> または <strong>ドラッグ＆ドロップ</strong></p>
+        <p style="margin-top:0.35rem;font-size:0.82rem;">PDFファイルのみ</p>
+        <input type="file" id="file" accept="application/pdf,.pdf" />
+      </div>
+      <div class="meta" id="fileMeta"></div>
+    </div>
+
+    <div class="card">
+      <label class="opt">
+        <input type="radio" name="mode" value="impose" checked />
+        <span>
+          2-up 面付け（推奨）
+          <span class="hint">1枚に左右2ページを配置した大きな用紙用PDFを生成。両面印刷→中央で折ると冊子になります。</span>
+        </span>
+      </label>
+      <label class="opt">
+        <input type="radio" name="mode" value="reorder" />
+        <span>
+          ページ順のみ並べ替え
+          <span class="hint">ページサイズはそのまま。プリンタの「小冊子印刷」機能や手動で並べる場合向け。</span>
+        </span>
+      </label>
+      <label class="opt">
+        <input type="checkbox" id="padBlanks" checked />
+        <span>
+          4の倍数になるよう空白ページを追加
+          <span class="hint">中綴じは総ページ数が4の倍数である必要があります。不足分は末尾に空白を挿入します。</span>
+        </span>
+      </label>
+      <div class="order-preview" id="orderPreview" aria-live="polite"></div>
+      <button class="btn btn-primary" id="runBtn" disabled>小冊子用PDFを作成</button>
+      <button class="btn btn-ghost" id="resetBtn" style="display:none;">別のPDFを選ぶ</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <details class="help">
+      <summary>使い方・印刷のコツ</summary>
+      <div class="body">
+        <ol>
+          <li>PDFを選択（またはドロップ）します。</li>
+          <li>「2-up 面付け」を選んだ場合、元のページの約2倍幅のシートができます。</li>
+          <li>生成されたPDFをダウンロードします。</li>
+          <li>プリンタで<strong>両面印刷</strong>します（用紙の短辺とじ／短辺フリップが一般的）。</li>
+          <li>印刷した用紙を中央で折り、重ねて中綴じ（ステープラなど）します。</li>
+        </ol>
+        <p style="margin-top:0.6rem;">例：元が8ページのとき、シート1表面は「8 | 1」、裏面は「2 | 7」のように配置されます。折ると正しい順序になります。</p>
+        <p style="margin-top:0.5rem;">※ 暗号化されたPDFや一部の特殊PDFは処理できない場合があります。</p>
+      </div>
+    </details>
+  </div>
+
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script>
+  (() => {
+    "use strict";
+
+    const drop = document.getElementById("drop");
+    const fileInput = document.getElementById("file");
+    const fileMeta = document.getElementById("fileMeta");
+    const runBtn = document.getElementById("runBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const status = document.getElementById("status");
+    const orderPreview = document.getElementById("orderPreview");
+    const padBlanks = document.getElementById("padBlanks");
+
+    let pdfBytes = null;
+    let fileName = "document.pdf";
+    let originalPageCount = 0;
+
+    function setStatus(type, msg) {
+      status.className = "status show " + type;
+      status.textContent = msg;
+    }
+    function clearStatus() {
+      status.className = "status";
+      status.textContent = "";
+    }
+
+    /**
+     * 中綴じ（saddle-stitch）用のプリンタースプレッド順を計算する。
+     * 戻り値: 1-indexed のページ番号配列（空白は total より大きい番号として扱う）
+     * 各シートは [frontLeft, frontRight, backLeft, backRight]
+     * 式:
+     *   Sheet k: FL = N - 2k, FR = 2k + 1, BL = 2k + 2, BR = N - 2k - 1
+     */
+    function computeBookletOrderCorrect(totalPages) {
+      const sheets = totalPages / 4;
+      const order = [];
+      for (let k = 0; k < sheets; k++) {
+        const frontLeft  = totalPages - 2 * k;
+        const frontRight = 2 * k + 1;
+        const backLeft   = 2 * k + 2;
+        const backRight  = totalPages - 2 * k - 1;
+        order.push(frontLeft, frontRight, backLeft, backRight);
+      }
+      return order;
+    }
+
+    function padToMultipleOf4(n) {
+      return Math.ceil(n / 4) * 4;
+    }
+
+    function showOrderPreview(n, padded) {
+      if (n === 0) {
+        orderPreview.classList.remove("show");
+        return;
+      }
+      const total = padBlanks.checked ? padded : n;
+      if (total % 4 !== 0) {
+        orderPreview.textContent = `現在 ${n} ページです。4の倍数（${padded}）になるよう空白追加を推奨します。`;
+        orderPreview.classList.add("show");
+        return;
+      }
+      const order = computeBookletOrderCorrect(total);
+      const lines = [];
+      for (let s = 0; s < order.length; s += 4) {
+        const sheet = Math.floor(s / 4) + 1;
+        const fl = order[s], fr = order[s+1], bl = order[s+2], br = order[s+3];
+        const fmt = (p) => (p > n ? "空白" : String(p));
+        lines.push(`シート${sheet} 表: [${fmt(fl)} | ${fmt(fr)}]  裏: [${fmt(bl)} | ${fmt(br)}]`);
+      }
+      orderPreview.textContent = lines.join("\n");
+      orderPreview.classList.add("show");
+    }
+
+    function onFile(file) {
+      if (!file || (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf"))) {
+        setStatus("err", "PDFファイルを選択してください。");
+        return;
+      }
+      clearStatus();
+      fileName = file.name;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          pdfBytes = new Uint8Array(reader.result);
+          const doc = await PDFLib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+          originalPageCount = doc.getPageCount();
+          if (originalPageCount === 0) {
+            setStatus("err", "ページがありません。");
+            pdfBytes = null;
+            runBtn.disabled = true;
+            return;
+          }
+          const padded = padToMultipleOf4(originalPageCount);
+          fileMeta.innerHTML = `選択中: <strong>${escapeHtml(fileName)}</strong> — ${originalPageCount} ページ` +
+            (padded > originalPageCount ? `（空白追加で ${padded} ページ）` : "");
+          runBtn.disabled = false;
+          resetBtn.style.display = "block";
+          showOrderPreview(originalPageCount, padded);
+          setStatus("info", "準備完了。モードを選んで「作成」を押してください。");
+        } catch (e) {
+          console.error(e);
+          setStatus("err", "PDFを読み込めませんでした。暗号化や破損の可能性があります。");
+          pdfBytes = null;
+          runBtn.disabled = true;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""");
+    }
+
+    drop.addEventListener("click", () => fileInput.click());
+    drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
+    fileInput.addEventListener("change", () => { if (fileInput.files[0]) onFile(fileInput.files[0]); });
+    drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("dragover"); });
+    drop.addEventListener("dragleave", () => drop.classList.remove("dragover"));
+    drop.addEventListener("drop", (e) => {
+      e.preventDefault();
+      drop.classList.remove("dragover");
+      if (e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
+    });
+
+    padBlanks.addEventListener("change", () => {
+      if (originalPageCount > 0) showOrderPreview(originalPageCount, padToMultipleOf4(originalPageCount));
+    });
+    document.querySelectorAll('input[name="mode"]').forEach((r) => {
+      r.addEventListener("change", () => {
+        if (originalPageCount > 0) showOrderPreview(originalPageCount, padToMultipleOf4(originalPageCount));
+      });
+    });
+
+    resetBtn.addEventListener("click", () => {
+      pdfBytes = null;
+      originalPageCount = 0;
+      fileInput.value = "";
+      fileMeta.innerHTML = "";
+      runBtn.disabled = true;
+      resetBtn.style.display = "none";
+      orderPreview.classList.remove("show");
+      clearStatus();
+    });
+
+    runBtn.addEventListener("click", async () => {
+      if (!pdfBytes) return;
+      runBtn.disabled = true;
+      setStatus("info", "処理中… ページ数が多いと少し時間がかかります。");
+
+      try {
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const doPad = padBlanks.checked;
+        const srcDoc = await PDFLib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+        const n = srcDoc.getPageCount();
+        let total = doPad ? padToMultipleOf4(n) : n;
+
+        if (total % 4 !== 0 && mode === "impose") {
+          total = padToMultipleOf4(n);
+          setStatus("info", `面付けのため ${total} ページにパディングします…`);
+        }
+
+        const order1based = computeBookletOrderCorrect(total);
+
+        if (mode === "reorder") {
+          const outDoc = await PDFLib.PDFDocument.create();
+          const firstPage = srcDoc.getPage(0);
+          const { width, height } = firstPage.getSize();
+
+          for (const p of order1based) {
+            if (p > n) {
+              outDoc.addPage([width, height]);
+            } else {
+              const [copied] = await outDoc.copyPages(srcDoc, [p - 1]);
+              outDoc.addPage(copied);
+            }
+          }
+          const outBytes = await outDoc.save();
+          download(outBytes, baseName(fileName) + "_booklet_reorder.pdf");
+          setStatus("ok", `完了: ${outDoc.getPageCount()} ページの並べ替えPDFをダウンロードしました。`);
+        } else {
+          // 2-up 面付け
+          const outDoc = await PDFLib.PDFDocument.create();
+          const firstPage = srcDoc.getPage(0);
+          const { width, height } = firstPage.getSize();
+          const sheetW = width * 2;
+          const sheetH = height;
+
+          const needed = new Set();
+          for (const p of order1based) {
+            if (p <= n) needed.add(p - 1);
+          }
+          const neededArr = Array.from(needed).sort((a,b)=>a-b);
+          const embedded = await outDoc.embedPdf(srcDoc, neededArr);
+          const embedMap = new Map();
+          neededArr.forEach((idx, i) => embedMap.set(idx, embedded[i]));
+
+          for (let s = 0; s < order1based.length; s += 4) {
+            const fl = order1based[s];
+            const fr = order1based[s + 1];
+            const bl = order1based[s + 2];
+            const br = order1based[s + 3];
+
+            const front = outDoc.addPage([sheetW, sheetH]);
+            if (fl <= n && embedMap.has(fl - 1)) {
+              front.drawPage(embedMap.get(fl - 1), { x: 0, y: 0, width, height });
+            }
+            if (fr <= n && embedMap.has(fr - 1)) {
+              front.drawPage(embedMap.get(fr - 1), { x: width, y: 0, width, height });
+            }
+
+            const back = outDoc.addPage([sheetW, sheetH]);
+            if (bl <= n && embedMap.has(bl - 1)) {
+              back.drawPage(embedMap.get(bl - 1), { x: 0, y: 0, width, height });
+            }
+            if (br <= n && embedMap.has(br - 1)) {
+              back.drawPage(embedMap.get(br - 1), { x: width, y: 0, width, height });
+            }
+          }
+
+          const outBytes = await outDoc.save();
+          download(outBytes, baseName(fileName) + "_booklet_impose.pdf");
+          setStatus("ok", `完了: ${outDoc.getPageCount()} シート（表裏ペア）の面付けPDFをダウンロードしました。両面印刷して中央で折ってください。`);
+        }
+      } catch (e) {
+        console.error(e);
+        setStatus("err", "処理に失敗しました: " + (e.message || String(e)));
+      } finally {
+        runBtn.disabled = false;
+      }
+    });
+
+    function baseName(name) {
+      return name.replace(/\.pdf$/i, "") || "document";
+    }
+
+    function download(bytes, name) {
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+  })();
+  </script>
+</body>
+</html>
