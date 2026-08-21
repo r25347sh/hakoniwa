@@ -5,7 +5,8 @@
   "use strict";
 
   const TOOLS = [
-    { id: "it", title: "見た目プロトタイプ CMS", desc: "色・フォント・余白・レイアウトを調整してWebサイトの見た目を素早く試作。HTML書き出し対応。", icon: "🎨", href: "it/", tag: "新着", accent: "#4a9a5a" },
+    { id: "booklet", title: "PDF小冊子メーカー", desc: "PDFを中綴じ小冊子用に面付け・ページ組み換え。ブラウザだけで処理しダウンロード。", icon: "📕", href: "tools/booklet/", tag: "新着", accent: "#5dade2" },
+    { id: "it", title: "見た目プロトタイプ CMS", desc: "色・フォント・余白・レイアウトを調整してWebサイトの見た目を素早く試作。HTML書き出し対応。", icon: "🎨", href: "it/", tag: "試作", accent: "#4a9a5a" },
     { id: "quickshare", title: "Quick Share", desc: "ファイルを端末同士で送受信。QRとリンクでつながる。", icon: "📡", href: "tools/quickshare/", tag: "共有", accent: "#4a9a5a" },
     { id: "blackboard", title: "黒板", desc: "フルスクリーン黒板。チョーク・消し・複数ページ・ズーム対応。", icon: "✎", href: "tools/blackboard/bb.html", tag: "人気", accent: "#4a9a5a" },
     { id: "timer", title: "授業タイマー", desc: "残り時間を大きく表示。プリセットやアラーム付き。", icon: "⏱", href: "tools/timer/", tag: "時間", accent: "#5dade2" },
