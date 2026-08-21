@@ -15,7 +15,6 @@
       --accent: #5dade2;
       --accent-dim: color-mix(in srgb, #5dade2 18%, transparent);
       --ok: #4a9a5a;
-      --warn: #e67e22;
       --border: rgba(255,255,255,0.1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,21 +39,44 @@
       margin-bottom: 1rem;
     }
     .drop {
+      position: relative;
       border: 2px dashed var(--border);
       border-radius: 12px;
       padding: 2rem 1rem;
       text-align: center;
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
+      overflow: hidden;
     }
     .drop:hover, .drop.dragover {
       border-color: var(--accent);
       background: var(--accent-dim);
     }
-    .drop input { display: none; }
-    .drop-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-    .drop p { color: var(--muted); font-size: 0.9rem; }
+    .drop input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      font-size: 0;
+    }
+    .drop-icon { font-size: 2rem; margin-bottom: 0.5rem; pointer-events: none; }
+    .drop p { color: var(--muted); font-size: 0.9rem; pointer-events: none; }
     .drop strong { color: var(--text); }
+    .btn-select {
+      display: inline-block;
+      margin-top: 0.85rem;
+      padding: 0.55rem 1.1rem;
+      background: var(--accent);
+      color: #0a1010;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      pointer-events: none;
+    }
     label.opt {
       display: flex;
       align-items: flex-start;
@@ -77,7 +99,7 @@
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
+      transition: opacity 0.15s;
     }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .btn-primary { background: var(--accent); color: #0a1010; }
@@ -94,6 +116,7 @@
       border-radius: 10px;
       font-size: 0.9rem;
       display: none;
+      word-break: break-word;
     }
     .status.show { display: block; }
     .status.info { background: var(--accent-dim); color: var(--accent); }
@@ -141,14 +164,15 @@
     <a class="back" href="../../">← HAKONIWA</a>
     <h1>PDF小冊子メーカー</h1>
     <p class="lead">
-      PDFをアップロードすると、鞍掛け綴じ（中綴じ）の小冊子として印刷できるようページを組み換えてダウンロードします。処理はすべて端末内で完結し、ファイルはサーバーに送られません。
+      PDFを選ぶと、鞍掛け綴じ（中綴じ）の小冊子として印刷できるようページを組み換えてダウンロードします。処理はすべて端末内で完結し、ファイルはサーバーに送られません。
     </p>
 
     <div class="card">
-      <div class="drop" id="drop" role="button" tabindex="0" aria-label="PDFを選択">
+      <div class="drop" id="drop">
         <div class="drop-icon">📄</div>
-        <p><strong>クリック</strong> または <strong>ドラッグ＆ドロップ</strong></p>
-        <p style="margin-top:0.35rem;font-size:0.82rem;">PDFファイルのみ</p>
+        <p><strong>ここをタップ／クリック</strong></p>
+        <p style="margin-top:0.35rem;font-size:0.82rem;">またはファイルをドラッグ＆ドロップ</p>
+        <span class="btn-select">PDFを選択</span>
         <input type="file" id="file" accept="application/pdf,.pdf" />
       </div>
       <div class="meta" id="fileMeta"></div>
@@ -159,21 +183,21 @@
         <input type="radio" name="mode" value="impose" checked />
         <span>
           2-up 面付け（推奨）
-          <span class="hint">1枚に左右2ページを配置した大きな用紙用PDFを生成。両面印刷→中央で折ると冊子になります。</span>
+          <span class="hint">1枚に左右2ページを配置。両面印刷→中央で折ると冊子になります。</span>
         </span>
       </label>
       <label class="opt">
         <input type="radio" name="mode" value="reorder" />
         <span>
           ページ順のみ並べ替え
-          <span class="hint">ページサイズはそのまま。プリンタの「小冊子印刷」機能や手動で並べる場合向け。</span>
+          <span class="hint">ページサイズはそのまま。プリンタの「小冊子印刷」向け。</span>
         </span>
       </label>
       <label class="opt">
         <input type="checkbox" id="padBlanks" checked />
         <span>
           4の倍数になるよう空白ページを追加
-          <span class="hint">中綴じは総ページ数が4の倍数である必要があります。不足分は末尾に空白を挿入します。</span>
+          <span class="hint">中綴じは総ページ数が4の倍数である必要があります。</span>
         </span>
       </label>
       <div class="order-preview" id="orderPreview" aria-live="polite"></div>
@@ -186,19 +210,19 @@
       <summary>使い方・印刷のコツ</summary>
       <div class="body">
         <ol>
-          <li>PDFを選択（またはドロップ）します。</li>
-          <li>「2-up 面付け」を選んだ場合、元のページの約2倍幅のシートができます。</li>
-          <li>生成されたPDFをダウンロードします。</li>
-          <li>プリンタで<strong>両面印刷</strong>します（用紙の短辺とじ／短辺フリップが一般的）。</li>
-          <li>印刷した用紙を中央で折り、重ねて中綴じ（ステープラなど）します。</li>
+          <li>上の枠をタップ／クリックしてPDFを選びます（またはドロップ）。</li>
+          <li>「2-up 面付け」を選ぶと、元のページの約2倍幅のシートができます。</li>
+          <li>「作成」を押してダウンロードします。</li>
+          <li>プリンタで<strong>両面印刷</strong>（短辺とじ／短辺フリップが一般的）。</li>
+          <li>中央で折り、中綴じします。</li>
         </ol>
-        <p style="margin-top:0.6rem;">例：元が8ページのとき、シート1表面は「8 | 1」、裏面は「2 | 7」のように配置されます。折ると正しい順序になります。</p>
-        <p style="margin-top:0.5rem;">※ 暗号化されたPDFや一部の特殊PDFは処理できない場合があります。</p>
+        <p style="margin-top:0.6rem;">例（8ページ）: シート1表 [8 | 1] 裏 [2 | 7] → 折ると正しい順になります。</p>
+        <p style="margin-top:0.5rem;">※ 暗号化PDFや一部の特殊PDFは読めないことがあります。また、ネットワーク制限でライブラリが読み込めない場合はエラーが出ます。</p>
       </div>
     </details>
   </div>
 
-  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script>
   (() => {
     "use strict";
@@ -225,22 +249,24 @@
       status.textContent = "";
     }
 
-    /**
-     * 中綴じ（saddle-stitch）用のプリンタースプレッド順を計算する。
-     * 戻り値: 1-indexed のページ番号配列（空白は total より大きい番号として扱う）
-     * 各シートは [frontLeft, frontRight, backLeft, backRight]
-     * 式:
-     *   Sheet k: FL = N - 2k, FR = 2k + 1, BL = 2k + 2, BR = N - 2k - 1
-     */
-    function computeBookletOrderCorrect(totalPages) {
+    function ensurePdfLib() {
+      if (typeof PDFLib === "undefined" || !PDFLib.PDFDocument) {
+        setStatus("err", "PDFライブラリの読み込みに失敗しました。ネットワーク制限の可能性があります。ページを再読み込みするか、別の回線でお試しください。");
+        return false;
+      }
+      return true;
+    }
+
+    function computeBookletOrder(totalPages) {
       const sheets = totalPages / 4;
       const order = [];
       for (let k = 0; k < sheets; k++) {
-        const frontLeft  = totalPages - 2 * k;
-        const frontRight = 2 * k + 1;
-        const backLeft   = 2 * k + 2;
-        const backRight  = totalPages - 2 * k - 1;
-        order.push(frontLeft, frontRight, backLeft, backRight);
+        order.push(
+          totalPages - 2 * k,
+          2 * k + 1,
+          2 * k + 2,
+          totalPages - 2 * k - 1
+        );
       }
       return order;
     }
@@ -256,31 +282,54 @@
       }
       const total = padBlanks.checked ? padded : n;
       if (total % 4 !== 0) {
-        orderPreview.textContent = `現在 ${n} ページです。4の倍数（${padded}）になるよう空白追加を推奨します。`;
+        orderPreview.textContent = "現在 " + n + " ページです。4の倍数（" + padded + "）になるよう空白追加を推奨します。";
         orderPreview.classList.add("show");
         return;
       }
-      const order = computeBookletOrderCorrect(total);
+      const order = computeBookletOrder(total);
       const lines = [];
       for (let s = 0; s < order.length; s += 4) {
         const sheet = Math.floor(s / 4) + 1;
-        const fl = order[s], fr = order[s+1], bl = order[s+2], br = order[s+3];
-        const fmt = (p) => (p > n ? "空白" : String(p));
-        lines.push(`シート${sheet} 表: [${fmt(fl)} | ${fmt(fr)}]  裏: [${fmt(bl)} | ${fmt(br)}]`);
+        const fmt = function (p) { return p > n ? "空白" : String(p); };
+        lines.push(
+          "シート" + sheet + " 表: [" + fmt(order[s]) + " | " + fmt(order[s + 1]) +
+          "]  裏: [" + fmt(order[s + 2]) + " | " + fmt(order[s + 3]) + "]"
+        );
       }
       orderPreview.textContent = lines.join("\n");
       orderPreview.classList.add("show");
     }
 
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&")
+        .replace(/</g, "<")
+        .replace(/>/g, ">")
+        .replace(/"/g, """);
+    }
+
     function onFile(file) {
-      if (!file || (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf"))) {
-        setStatus("err", "PDFファイルを選択してください。");
+      if (!file) return;
+      const isPdf =
+        file.type === "application/pdf" ||
+        file.name.toLowerCase().endsWith(".pdf");
+      if (!isPdf) {
+        setStatus("err", "PDFファイルを選択してください。（選択された: " + (file.name || "不明") + "）");
         return;
       }
+      if (!ensurePdfLib()) return;
+
       clearStatus();
-      fileName = file.name;
+      setStatus("info", "読み込み中…");
+      fileName = file.name || "document.pdf";
+
       const reader = new FileReader();
-      reader.onload = async () => {
+      reader.onerror = function () {
+        setStatus("err", "ファイルの読み込みに失敗しました。");
+        pdfBytes = null;
+        runBtn.disabled = true;
+      };
+      reader.onload = async function () {
         try {
           pdfBytes = new Uint8Array(reader.result);
           const doc = await PDFLib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
@@ -292,15 +341,17 @@
             return;
           }
           const padded = padToMultipleOf4(originalPageCount);
-          fileMeta.innerHTML = `選択中: <strong>${escapeHtml(fileName)}</strong> — ${originalPageCount} ページ` +
-            (padded > originalPageCount ? `（空白追加で ${padded} ページ）` : "");
+          fileMeta.innerHTML =
+            "選択中: <strong>" + escapeHtml(fileName) + "</strong> — " +
+            originalPageCount + " ページ" +
+            (padded > originalPageCount ? "（空白追加で " + padded + " ページ）" : "");
           runBtn.disabled = false;
           resetBtn.style.display = "block";
           showOrderPreview(originalPageCount, padded);
           setStatus("info", "準備完了。モードを選んで「作成」を押してください。");
         } catch (e) {
           console.error(e);
-          setStatus("err", "PDFを読み込めませんでした。暗号化や破損の可能性があります。");
+          setStatus("err", "PDFを読み込めませんでした。暗号化や破損の可能性があります。(" + (e.message || e) + ")");
           pdfBytes = null;
           runBtn.disabled = true;
         }
@@ -308,31 +359,38 @@
       reader.readAsArrayBuffer(file);
     }
 
-    function escapeHtml(s) {
-      return String(s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""");
-    }
-
-    drop.addEventListener("click", () => fileInput.click());
-    drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
-    fileInput.addEventListener("change", () => { if (fileInput.files[0]) onFile(fileInput.files[0]); });
-    drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("dragover"); });
-    drop.addEventListener("dragleave", () => drop.classList.remove("dragover"));
-    drop.addEventListener("drop", (e) => {
-      e.preventDefault();
-      drop.classList.remove("dragover");
-      if (e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
+    fileInput.addEventListener("change", function () {
+      if (fileInput.files && fileInput.files[0]) {
+        onFile(fileInput.files[0]);
+      }
     });
 
-    padBlanks.addEventListener("change", () => {
-      if (originalPageCount > 0) showOrderPreview(originalPageCount, padToMultipleOf4(originalPageCount));
-    });
-    document.querySelectorAll('input[name="mode"]').forEach((r) => {
-      r.addEventListener("change", () => {
-        if (originalPageCount > 0) showOrderPreview(originalPageCount, padToMultipleOf4(originalPageCount));
+    ["dragenter", "dragover"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        drop.classList.add("dragover");
       });
     });
+    ["dragleave", "drop"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        drop.classList.remove("dragover");
+      });
+    });
+    drop.addEventListener("drop", function (e) {
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files[0]) onFile(files[0]);
+    });
 
-    resetBtn.addEventListener("click", () => {
+    padBlanks.addEventListener("change", function () {
+      if (originalPageCount > 0) {
+        showOrderPreview(originalPageCount, padToMultipleOf4(originalPageCount));
+      }
+    });
+
+    resetBtn.addEventListener("click", function () {
       pdfBytes = null;
       originalPageCount = 0;
       fileInput.value = "";
@@ -343,8 +401,9 @@
       clearStatus();
     });
 
-    runBtn.addEventListener("click", async () => {
+    runBtn.addEventListener("click", async function () {
       if (!pdfBytes) return;
+      if (!ensurePdfLib()) return;
       runBtn.disabled = true;
       setStatus("info", "処理中… ページ数が多いと少し時間がかかります。");
 
@@ -354,46 +413,50 @@
         const srcDoc = await PDFLib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
         const n = srcDoc.getPageCount();
         let total = doPad ? padToMultipleOf4(n) : n;
-
-        if (total % 4 !== 0 && mode === "impose") {
+        if (total % 4 !== 0) {
           total = padToMultipleOf4(n);
-          setStatus("info", `面付けのため ${total} ページにパディングします…`);
         }
 
-        const order1based = computeBookletOrderCorrect(total);
+        const order1based = computeBookletOrder(total);
+        const firstPage = srcDoc.getPage(0);
+        const size = firstPage.getSize();
+        const width = size.width;
+        const height = size.height;
 
         if (mode === "reorder") {
           const outDoc = await PDFLib.PDFDocument.create();
-          const firstPage = srcDoc.getPage(0);
-          const { width, height } = firstPage.getSize();
-
-          for (const p of order1based) {
+          for (let i = 0; i < order1based.length; i++) {
+            const p = order1based[i];
             if (p > n) {
               outDoc.addPage([width, height]);
             } else {
-              const [copied] = await outDoc.copyPages(srcDoc, [p - 1]);
-              outDoc.addPage(copied);
+              const copied = await outDoc.copyPages(srcDoc, [p - 1]);
+              outDoc.addPage(copied[0]);
             }
           }
           const outBytes = await outDoc.save();
           download(outBytes, baseName(fileName) + "_booklet_reorder.pdf");
-          setStatus("ok", `完了: ${outDoc.getPageCount()} ページの並べ替えPDFをダウンロードしました。`);
+          setStatus("ok", "完了: " + outDoc.getPageCount() + " ページの並べ替えPDFをダウンロードしました。");
         } else {
-          // 2-up 面付け
           const outDoc = await PDFLib.PDFDocument.create();
-          const firstPage = srcDoc.getPage(0);
-          const { width, height } = firstPage.getSize();
           const sheetW = width * 2;
           const sheetH = height;
 
-          const needed = new Set();
-          for (const p of order1based) {
-            if (p <= n) needed.add(p - 1);
+          const needed = [];
+          const seen = {};
+          for (let i = 0; i < order1based.length; i++) {
+            const p = order1based[i];
+            if (p <= n && !seen[p - 1]) {
+              seen[p - 1] = true;
+              needed.push(p - 1);
+            }
           }
-          const neededArr = Array.from(needed).sort((a,b)=>a-b);
-          const embedded = await outDoc.embedPdf(srcDoc, neededArr);
-          const embedMap = new Map();
-          neededArr.forEach((idx, i) => embedMap.set(idx, embedded[i]));
+          needed.sort(function (a, b) { return a - b; });
+          const embedded = await outDoc.embedPdf(srcDoc, needed);
+          const embedMap = {};
+          for (let i = 0; i < needed.length; i++) {
+            embedMap[needed[i]] = embedded[i];
+          }
 
           for (let s = 0; s < order1based.length; s += 4) {
             const fl = order1based[s];
@@ -402,25 +465,25 @@
             const br = order1based[s + 3];
 
             const front = outDoc.addPage([sheetW, sheetH]);
-            if (fl <= n && embedMap.has(fl - 1)) {
-              front.drawPage(embedMap.get(fl - 1), { x: 0, y: 0, width, height });
+            if (fl <= n && embedMap[fl - 1]) {
+              front.drawPage(embedMap[fl - 1], { x: 0, y: 0, width: width, height: height });
             }
-            if (fr <= n && embedMap.has(fr - 1)) {
-              front.drawPage(embedMap.get(fr - 1), { x: width, y: 0, width, height });
+            if (fr <= n && embedMap[fr - 1]) {
+              front.drawPage(embedMap[fr - 1], { x: width, y: 0, width: width, height: height });
             }
 
             const back = outDoc.addPage([sheetW, sheetH]);
-            if (bl <= n && embedMap.has(bl - 1)) {
-              back.drawPage(embedMap.get(bl - 1), { x: 0, y: 0, width, height });
+            if (bl <= n && embedMap[bl - 1]) {
+              back.drawPage(embedMap[bl - 1], { x: 0, y: 0, width: width, height: height });
             }
-            if (br <= n && embedMap.has(br - 1)) {
-              back.drawPage(embedMap.get(br - 1), { x: width, y: 0, width, height });
+            if (br <= n && embedMap[br - 1]) {
+              back.drawPage(embedMap[br - 1], { x: width, y: 0, width: width, height: height });
             }
           }
 
           const outBytes = await outDoc.save();
           download(outBytes, baseName(fileName) + "_booklet_impose.pdf");
-          setStatus("ok", `完了: ${outDoc.getPageCount()} シート（表裏ペア）の面付けPDFをダウンロードしました。両面印刷して中央で折ってください。`);
+          setStatus("ok", "完了: " + outDoc.getPageCount() + " シート（表裏ペア）の面付けPDFをダウンロードしました。両面印刷して中央で折ってください。");
         }
       } catch (e) {
         console.error(e);
@@ -443,8 +506,14 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
     }
+
+    setTimeout(function () {
+      if (typeof PDFLib === "undefined") {
+        setStatus("err", "PDFライブラリ（pdf-lib）を読み込めませんでした。CDNがブロックされている可能性があります。ページを再読み込みするか、別のネットワークで試してください。");
+      }
+    }, 2500);
   })();
   </script>
 </body>
